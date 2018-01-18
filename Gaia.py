@@ -98,38 +98,38 @@ def get_hexes_at_radius(centre_col, centre_row, radius):
                 [centre_col-1,centre_row-1]]
     return hex_list
   if radius == 2:
-    hex_list = [[centre_col  ,centre_row-4],
-                [centre_col+1,centre_row-3],
-                [centre_col+2,centre_row-2],
-                [centre_col+2,centre_row  ],
-                [centre_col+2,centre_row+2],
-                [centre_col+1,centre_row+3],
-                [centre_col  ,centre_row+4],
-                [centre_col-1,centre_row+3],
-                [centre_col-2,centre_row+2],
-                [centre_col-2,centre_row  ],
-                [centre_col-2,centre_row-2],
-                [centre_col-1,centre_row-3]]
+    hex_list = [[centre_col, centre_row-4],
+                [centre_col+1, centre_row-3],
+                [centre_col+2, centre_row-2],
+                [centre_col+2, centre_row],
+                [centre_col+2, centre_row+2],
+                [centre_col+1, centre_row+3],
+                [centre_col,centre_row+4],
+                [centre_col-1, centre_row+3],
+                [centre_col-2, centre_row+2],
+                [centre_col-2, centre_row  ],
+                [centre_col-2, centre_row-2],
+                [centre_col-1, centre_row-3]]
     return hex_list
   if radius == 3:
-    hex_list = [[centre_col  ,centre_row-6],
-                [centre_col+1,centre_row-5],
-                [centre_col+2,centre_row-4],
-                [centre_col+3,centre_row-3],
-                [centre_col+3,centre_row-1],
-                [centre_col+3,centre_row+1],
-                [centre_col+3,centre_row+3],
-                [centre_col+2,centre_row+4],
-                [centre_col+1,centre_row+5],
-                [centre_col  ,centre_row+6],
-                [centre_col-1,centre_row+5],
-                [centre_col-2,centre_row+4],
-                [centre_col-3,centre_row+3],
-                [centre_col-3,centre_row+1],
-                [centre_col-3,centre_row-1],
-                [centre_col-3,centre_row-3],
-                [centre_col-2,centre_row-4],
-                [centre_col-1,centre_row-5]]
+    hex_list = [[centre_col, centre_row-6],
+                [centre_col+1, centre_row-5],
+                [centre_col+2, centre_row-4],
+                [centre_col+3, centre_row-3],
+                [centre_col+3, centre_row-1],
+                [centre_col+3, centre_row+1],
+                [centre_col+3, centre_row+3],
+                [centre_col+2, centre_row+4],
+                [centre_col+1, centre_row+5],
+                [centre_col, centre_row+6],
+                [centre_col-1, centre_row+5],
+                [centre_col-2, centre_row+4],
+                [centre_col-3, centre_row+3],
+                [centre_col-3, centre_row+1],
+                [centre_col-3, centre_row-1],
+                [centre_col-3, centre_row-3],
+                [centre_col-2, centre_row-4],
+                [centre_col-1, centre_row-5]]
     return hex_list
   return []
 
