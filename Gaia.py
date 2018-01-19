@@ -181,11 +181,10 @@ def get_stats(values):
   2 - min value
   3 - max value
   """
-    values.sort()
     avg = 0.0
     var = 0.0
-    minv = 0
-    maxv = 0
+    minv = 100000.0
+    maxv = -100000.0
     n = len(values)
     if n < 1:
         return [avg, var, minv, maxv]
@@ -193,15 +192,19 @@ def get_stats(values):
         return [values[0], var, values[0], values[0]]
     for val in values:
         avg = avg + val
+        if val < minv:
+            minv = val
+        if val > maxv:
+            maxv = val
     avg = avg / n
     for val in values:
         diff = val - avg
         var = var + diff * diff
     var = var / n
-    return [avg, var, values[0], values[n - 1]]
+    return [avg, var, minv, maxv]
 
 
-def has_equal_neigbours(hex_map):
+def has_equal_neigbours(hex_map, radius=2):
     """
   Function that loops through hex map and checks if there are
   any equal planet types next to each other (ignoring Transdimentional planets and voids)
@@ -218,13 +221,17 @@ def has_equal_neigbours(hex_map):
         for row in range(n_rows):  # looping through the map
             if hex_map[col][row] == "Tr" or hex_map[col][row] is None or hex_map[col][row] == "Em":
                 continue
-            neighbours = get_hexes_at_radius(col, row, 1)
-            for i in range(2,
-                           4):  # only look at neighbours "in front of" the planet, or we would check some stuff more than once
-                if neighbours[i][0] >= n_cols or neighbours[i][1] >= n_rows:
-                    continue  # in case we are at the end of a col/row
-                if hex_map[col][row] == hex_map[neighbours[i][0]][neighbours[i][1]]:
-                    return 1
+            for R in range(1, radius+1):
+                if R > 1 and hex_map[col][row] == "Ga":
+                    break
+                neighbours = get_hexes_at_radius(col, row, R)
+                for coords in neighbours:
+                    if coords[0] < 0 or coords[1] < 0:
+                        continue # in case we are outside the map
+                    if coords[0] >= n_cols or coords[1] >= n_rows:
+                        continue  # in case we are at the end of a col/row
+                    if hex_map[col][row] == hex_map[coords[0]][coords[1]]:
+                        return 1
     return 0
 
 
@@ -352,6 +359,138 @@ def get_cluster_size_list(hex_map, ignored_types=[None, "Em"]):
     return cluster_sizes
 
 
+def number_factor(PD, SC=30.0, OD=0.32153):
+    '''
+    PD - Planet density
+    OD - Optimal density
+    SC - a number used to scale how bad it is to differ from the
+         optimal density. Lower number means less bad
+    Returns a number between 0.0 and 1.0 indicating how good the
+    density of planets is compared to the optimal density
+    '''
+    diff_from_opt = OD - PD
+    exponent = -SC * diff_from_opt * diff_from_opt
+    return pow(2.718281828, exponent)
+
+
+def type_factor(NT, NP, SC=30.0):
+    '''
+    NT - Number of planet types in area
+    NP - Number of planets in area
+    SC - a number used to scale how bad it is to differ from the
+         optimal number of planet types. Lower number means less bad
+    Returns a number between 0.0 and 1.0 indicating how good the ratio
+    of different planet types is compared to the optimal ratio
+    The optimal is to have as many different planet types as possible
+    '''
+    max_types = 9.0
+    if NP < max_types:
+        max_types = NP
+    ratio = NT / max_types
+    diff_from_opt = 1.0 - ratio
+    exponent = -SC * diff_from_opt * diff_from_opt
+    return pow(2.718281828, exponent)
+
+
+def hex_happiness(col, row, hex_map, NW=0.5, PD_SC=30.0, TR_SC=30.0, radius=3):
+    '''
+    col - column of centre hex
+    row - row of centre hex
+    hex_map - the map..
+    NW - how much weight should be placed on planet density vs planet type
+    PD_SC - Planet Density Dropoff Scale. Higher number means that happiness drops
+         off faster as the planet density moves away from the ideal density
+    TR_SC - Type Ratio Dropoff Scale. Higher number means that the happiness drops
+         off faster as the ratio of different planet types moves away from maximum
+         ratio = (number of different planet types)/(number of different planet types possible)
+    radius - radius used for each hex when calculatin hex happiness
+
+    Optimal density of planets is about 1/3 in the full map
+    as there are 61 planets divided on 190 hexes (0.321053)
+    This means that inside a sector of range R there should be about
+     2 planets when  R = 1 ( 7 total hexes, density = 0.285714)
+     6 planets when  R = 2 (19 total hexes, density = 0.315789)
+     12 planets when R = 3 (37 total hexes, density = 0.324324)
+    We want a nice distribution of planet types through the space,
+    so that for any sector with R = 3 we want as many planet types
+    as possible to exist inside that sector.
+    Given these factors we define hex happiness as follows:
+     H = NW*number_factor(PD) + (1-NW)*type_factor(NT,NP)
+    where
+     NP - number of planets inside max_range
+     PD - planet density in area = NP/(number of hexes in area)
+     NT - number of unique planet types inside range 3
+     NW - how much weight should be placed on number of planets
+          vs nymber of types. NW must be a number between 0.0 and 1.0
+     number_factor() is a formula that returns a maximum value of 1.0
+          for the optimal number of planets, and smaller values for
+          number of planets further away from the optimum
+     type_factor() is a  formula that returns a maximum value of 1.0
+          for the optimal number of planet types, and smaller values for
+          number of planet types further away from the optimum
+    The resulting value should be a number between 0.0 and 1.0
+    '''
+    planet_types = ["Bl", "Br", "Ye", "Or", "Re", "Bl", "Wh", "Ga", "Tr"]
+    n_planet_types = len(planet_types)
+    exists_in_range = [0.0 for i in range(n_planet_types)]
+    NH = 0.0
+    n_cols = len(hex_map)
+    n_rows = len(hex_map[0])
+    for R in range(radius + 1):
+        coords = get_hexes_at_radius(col, row, R)
+        for coord in coords:
+            if coord[0] < 0 or coord[0] >= n_cols:
+                continue
+            if coord[1] < 0 or coord[1] >= n_rows:
+                continue
+            PT = hex_map[coord[0]][coord[1]]
+            if PT is not None:
+                NH += 1.0
+                for i in range(n_planet_types):
+                    if planet_types[i] == PT:
+                        exists_in_range[i] += 1.0
+                        break
+    NP = 0.0
+    NT = 0.0
+    for i in range(n_planet_types):
+        if exists_in_range[i] > 0:
+            NT += 1.0
+            NP += exists_in_range[i]
+    PD = NP / NH
+
+    return NW * number_factor(PD, PD_SC) + (1.0 - NW) * type_factor(NT, NP, TR_SC)
+
+
+def calc_map_happiness(hex_map, NW=0.5, PD_SC=30.0, TR_SC=5.0, radius=3):
+    '''
+    hex_map - the map used in the calculation
+    PD_SC - Planet Density Dropoff Scale. Higher number means that happiness drops
+         off faster as the planet density moves away from the ideal density
+    TR_SC - Type Ratio Dropoff Scale. Higher number means that the happiness drops
+         off faster as the ratio of different planet types moves away from maximum
+         ratio = (number of different planet types)/(number of different planet types possible)
+    radius - radius used for each hex when calculatin hex happiness
+  
+    Iterates over the hex_map and calculates total happiness (sum of happiness for each hex)
+    Returns a vector with the following data
+     0 - happiness percentage
+     1 - total happiness
+     3 - number of hexes calculated for (changes depending on map size)
+    '''
+    total_happiness = 0.0
+    n_hexes = 0.0
+    n_cols = len(hex_map)
+    n_rows = len(hex_map[0])
+    for col in range(n_cols):
+        for row in range(n_rows):
+            if hex_map[col][row] is None:
+                continue
+            total_happiness += hex_happiness(col, row, hex_map, NW, PD_SC, TR_SC, radius)
+            n_hexes += 1.0
+    happiness_percentage = 100.0 * total_happiness / n_hexes
+    return [happiness_percentage, total_happiness, n_hexes]
+
+
 class Map(object):
     def __init__(self, players, random="Yes"):
         """
@@ -370,6 +509,8 @@ class Map(object):
         self.width = 23
         self.height = 30
 
+        self.minimal_equal_range = 3
+
 
         self.convert = {"Em": Empty, "Tr": Fancy_planet, "Ga": Fancy_planet,
                         "Br": Planet, "Bl": Planet, "Bk": Planet,
@@ -383,12 +524,16 @@ class Map(object):
         self.best_balance = 100000.0
         self.best_map_data = self.get_printable_map_data()
 
-        # parameters used in the happiness calculation:
+        # parameters used in the happiness calculation version 1:
         self.max_range = 3
-        self.range_factor = [1.0, 1.0, 0.8, 0.4]
-        self.terraform_param = [3.0, 2.0, 1.0, 1.0]
-        self.gaia_param = 2.0
+        self.range_factor = [1.0, 1.0/6.0, 1.0/12.0, 1.0/18.0]
+        self.terraform_param = [1.0, 1.0, 1.0, 1.0]
+        self.gaia_param = 1.0
         self.trans_param = 1.0
+
+        # parameters used in optimization version 2:
+        self.highest_happiness = 0.0
+        self.happiest_map = self.get_printable_map_data()
 
     def set_map(self):
         Small = ["1", "5_", "2", "3", "6_", "4", "7_"]
@@ -485,13 +630,19 @@ class Map(object):
         map_picture.show()
 
     def rotate_map_randomly(self):
-        for row in self.map:
-            for sector in row:
-                n_rot = random.randint(0, 5)
-                sector.rotate_sector(n_rot)
-        self.generate_full_map()
-        if has_equal_neigbours(self.full_map) == 1:
-            self.rotate_map_randomly()
+        do_rotate = 1
+        num_rotations = 0
+        while do_rotate == 1:
+            for row in self.map:
+                for sector in row:
+                    n_rot = random.randint(0, 5)
+                    sector.rotate_sector(n_rot)
+            self.generate_full_map()
+            do_rotate = has_equal_neigbours(self.full_map, self.minimal_equal_range - 1) == 1
+            num_rotations += 1
+            #print num_rotations
+        if num_rotations > 2:
+            print num_rotations
 
     def get_printable_map_data(self):
         """
@@ -539,9 +690,33 @@ class Map(object):
         stats = get_stats(planet_happiness)
 
         if print_happiness != 0:
-            print color_wheel
-            print planet_happiness
-            print stats
+            print "Color Happiness:"
+            for i in range(7):
+                if color_wheel[i] == "Bk":
+                    print " Grey   - {:04.2f}".format(planet_happiness[i])
+                if color_wheel[i] == "Br":
+                    print " Brown  - {:04.2f}".format(planet_happiness[i])
+                if color_wheel[i] == "Ye":
+                    print " Yellow - {:04.2f}".format(planet_happiness[i])
+                if color_wheel[i] == "Or":
+                    print " Orange - {:04.2f}".format(planet_happiness[i])
+                if color_wheel[i] == "Re":
+                    print " Red    - {:04.2f}".format(planet_happiness[i])
+                if color_wheel[i] == "Bl":
+                    print " Blue   - {:04.2f}".format(planet_happiness[i])
+                if color_wheel[i] == "Wh":
+                    print " White  - {:04.2f}".format(planet_happiness[i])
+            stat_string = "Stats: "
+            for i in range(4):
+                if i == 0:
+                    stat_string += "Avg = {:04.2f}".format(stats[i])
+                if i == 1:
+                    stat_string += ", Var = {:04.3f}".format(stats[i])
+                if i == 2:
+                    stat_string += ", Min = {:04.2f}".format(stats[i])
+                if i == 3:
+                    stat_string += ", Max = {:04.2f}".format(stats[i])
+            print stat_string
         return stats[1]
 
     def balance_map(self):
@@ -558,6 +733,21 @@ class Map(object):
                 self.best_balance = balance
                 self.best_map_data = self.get_printable_map_data()
 
+    def calculate_balance_v2(self, print_happiness=0):
+        hp = calc_map_happiness(self.full_map, 0, 30.0, 5.0, 2)[0]
+        if print_happiness != 0:
+            print "Happiness = {:04.2f}".format(hp)
+        return hp
+
+    def balance_map_v2(self):
+        self.highest_happiness = self.calculate_balance_v2()
+        self.happiest_map = self.get_printable_map_data()
+        for i in range(self.try_count):
+            self.rotate_map_randomly()
+            happiness = self.calculate_balance_v2(0)
+            if happiness > self.highest_happiness:
+                self.highest_happiness = happiness
+                self.happiest_map = self.get_printable_map_data()
 
     def get_best_map_data(self):
         return self.best_map_data
@@ -572,6 +762,9 @@ class Map(object):
 
     def set_to_balanced_map(self):
         self.set_map_by_map_data(self.best_map_data)
+
+    def set_to_balanced_map_v2(self):
+        self.set_map_by_map_data(self.happiest_map)
 
 
 class Sector(object):
@@ -680,12 +873,14 @@ class Planet(Hexagon):
 if __name__ == "__main__":
     test_map = Map(4, "No")
     test_map.set_try_count(100)
+    test_map.calculate_balance_v2(1)
 
-    test_map.balance_map()
-    test_map.set_to_balanced_map()
-    test_map.calculate_balance(1)
+    test_map.balance_map_v2()
+    test_map.set_to_balanced_map_v2()
+    test_map.calculate_balance_v2(1)
     test_map.make_image_map(test_map.get_best_map_data())
     hex_map = test_map.get_full_map()
+    print has_equal_neigbours(hex_map)
 
     '''
     for i in range(7):
