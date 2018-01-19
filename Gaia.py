@@ -370,6 +370,15 @@ class Map(object):
         self.width = 23
         self.height = 30
 
+        self.clockwise = True
+
+        self.image_location = "images/"
+        self.image_name = "Gaia_map"
+        self.image_format = ".png"
+
+        self.map_picture = None
+        self.image_width = 1884
+        self.image_height = 2042
 
         self.convert = {"Em": Empty, "Tr": Fancy_planet, "Ga": Fancy_planet,
                         "Br": Planet, "Bl": Planet, "Bk": Planet,
@@ -452,37 +461,41 @@ class Map(object):
         sector list = [(sector, rotation)]
         """
         sector_list = self.get_printable_map_data()
-        image_location = "images/"
-        image_format = ".png"
 
-        image_width = 1884
-        image_height = 2042
+        map_width = int(self.image_width * len(sector_list[1]) * 0.96)
+        map_height = int(self.image_height * 2.8)
 
-        map_width = int(image_width * len(sector_list[1]) * 0.96)
-        map_height = int(image_height * 2.8)
+        self.map_picture = Image.new("RGB", (map_width, map_height), (255, 255, 255))
 
-        map_picture = Image.new("RGB", (map_width, map_height), (255, 255, 255))
+        height_adjustment = int(self.image_height * 0.1)
+        v_scale = 0.71
+        h_scale = 0.945
 
-        height_adjustment = int(image_height * 0.1)
-        vscale = 0.71
-        hscale = 0.945
-
-        sector_start_horizontal = int(image_width * 0.56)
+        sector_start_horizontal = int(self.image_width * 0.56)
         sector_start_vertical = 0
 
-        v_offsets = [0, 0, int(image_height * 0.1)]
-        h_offsets = [sector_start_horizontal, 0, sector_start_horizontal - int(image_width * 0.18)]
+        v_offsets = [0, 0, int(self.image_height * 0.1)]
+        h_offsets = [sector_start_horizontal, 0, sector_start_horizontal - int(self.image_width * 0.18)]
 
         for j, row in enumerate(sector_list):
             for i, (sector_number, sector_rotation) in enumerate(row):
-                filename = image_location + sector_number + image_format
-                hor = h_offsets[j] + int(image_width * hscale * i)
-                ver = v_offsets[j] + (int(image_height * vscale * j)) + sector_start_vertical + height_adjustment * i
+                filename = self.image_location + sector_number + self.image_format
+                hor = h_offsets[j] + int(self.image_width * h_scale * i)
+                ver = v_offsets[j] + (int(self.image_height * v_scale * j)) + sector_start_vertical + height_adjustment * i
                 image = Image.open(filename)
                 image = image.rotate(-sector_rotation)
-                map_picture.paste(image, (hor, ver), image)
+                self.map_picture.paste(image, (hor, ver), image)
 
-        map_picture.show()
+    def show_image_map(self):
+        if self.map_picture == None:
+            self.make_image_map(self.clockwise)
+        self.map_picture.show()
+
+    def save_image_map(self):
+        if self.map_picture == None:
+            self.make_image_map(self.clockwise)
+        address = self.image_location + self.image_name + self.image_format
+        self.map_picture.save(address)
 
     def rotate_map_randomly(self):
         for row in self.map:
@@ -684,7 +697,7 @@ if __name__ == "__main__":
     test_map.balance_map()
     test_map.set_to_balanced_map()
     test_map.calculate_balance(1)
-    test_map.make_image_map(test_map.get_best_map_data())
+    test_map.show_image_map()
     hex_map = test_map.get_full_map()
 
     '''
