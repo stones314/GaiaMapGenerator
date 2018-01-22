@@ -56,8 +56,8 @@ color_wheel = ["Bk", "Br", "Ye", "Or", "Re", "Bl", "Wh"]
 
 def get_dist(hex_a_coord, hex_b_coord):
     """
-  Function that get the distance between two hexes
-  """
+    Function that get the distance between two hexes
+    """
     dist = 0
     col = hex_a_coord[0]
     row = hex_a_coord[1]
@@ -82,9 +82,9 @@ def get_dist(hex_a_coord, hex_b_coord):
 
 def get_hexes_at_radius(centre_col, centre_row, radius):
     """
-  Function that get a list of all hexes at a certain radius from
-  a centre hex
-  """
+    Function that get a list of all hexes at a certain radius from
+    a centre hex
+    """
     if radius == 0:
         hex_list = [[centre_col, centre_row]]
         return hex_list
@@ -135,11 +135,11 @@ def get_hexes_at_radius(centre_col, centre_row, radius):
 
 def get_planet_coords(planet_type, hex_map):
     """
-  Function that loops through map and finds plantes of the same type
-  Returns a list of the positions of these planets
-  -planet_type is the planet type string (e.g "Bk")
-  -hex_map is the map of the galaxy represented as a list of cols
-  """
+      Function that loops through map and finds plantes of the same type
+      Returns a list of the positions of these planets
+      -planet_type is the planet type string (e.g "Bk")
+      -hex_map is the map of the galaxy represented as a list of cols
+      """
     coords = []
     n_cols = len(hex_map)
     if n_cols < 1:
@@ -156,10 +156,10 @@ def get_planet_coords(planet_type, hex_map):
 
 def get_hex_distances(hex_coords):
     """
-  Function that finds distances between coords
-  Given a list of coords it returns a list of all the distances between these coords
-  A list with N coords will lead to a list of (N-1) + (N - 2) + ... + 1 = N*(N-1)/2 distances
-  """
+      Function that finds distances between coords
+      Given a list of coords it returns a list of all the distances between these coords
+      A list with N coords will lead to a list of (N-1) + (N - 2) + ... + 1 = N*(N-1)/2 distances
+      """
     n = len(hex_coords)
     if n < 2:
         return []
@@ -174,13 +174,13 @@ def get_hex_distances(hex_coords):
 
 def get_stats(values):
     """
-  Function to calculate statistics from a list of values
-  Returns a list of results as follows:
-  0 - average
-  1 - variance
-  2 - min value
-  3 - max value
-  """
+      Function to calculate statistics from a list of values
+      Returns a list of results as follows:
+      0 - average
+      1 - variance
+      2 - min value
+      3 - max value
+      """
     avg = 0.0
     var = 0.0
     minv = 100000.0
@@ -206,11 +206,11 @@ def get_stats(values):
 
 def has_equal_neigbours(hex_map, radius=2):
     """
-  Function that loops through hex map and checks if there are
-  any equal planet types next to each other (ignoring Transdimentional planets and voids)
-  returns 0 if no eaqual neighbours exist
-          1 if any equal neighbours exists
-"""
+    Function that loops through hex map and checks if there are
+    any equal planet types next to each other (ignoring Transdimentional planets and voids)
+    returns 0 if no eaqual neighbours exist
+            1 if any equal neighbours exists
+    """
     n_cols = len(hex_map)
     if n_cols < 1:
         return 0
@@ -237,8 +237,8 @@ def has_equal_neigbours(hex_map, radius=2):
 
 def get_color_dist(planet1, planet2):
     """
-  Function that finds the distance between two planets on the color wheel
-  """
+    Function that finds the distance between two planets on the color wheel
+    """
     if planet1 == planet2:
         return 0
     if planet1 == "Ga" or planet2 == "Ga":
@@ -262,18 +262,18 @@ def get_color_dist(planet1, planet2):
 
 def calc_happiness(planet_type, hex_map, GP, TP, HP, max_range, RF):
     """
-  Function that calculates happiness for a planet type
-  It loops through the map and sums the happiness of each
-  planet of that type
-  Happiness is determined as follows:
-   - Gaia planet at range R adds happiness GP/R
-   - Transdim planet at range R adds happiness TP/R
-   - Other planet at range R adds happiness CP[CD]/R,
-     where CD is the color distance to that planet.
-     Hence CP is a list with 4 elements [cp0,cp1,cp2,cp3],
-     giving the happiness for planets at color distance 0-3
-   - Only planets within max_range is included
-  """
+    Function that calculates happiness for a planet type
+    It loops through the map and sums the happiness of each
+    planet of that type
+    Happiness is determined as follows:
+    - Gaia planet at range R adds happiness GP/R
+    - Transdim planet at range R adds happiness TP/R
+    - Other planet at range R adds happiness CP[CD]/R,
+      where CD is the color distance to that planet.
+      Hence CP is a list with 4 elements [cp0,cp1,cp2,cp3],
+      giving the happiness for planets at color distance 0-3
+    - Only planets within max_range is included
+    """
     happiness = 0.0
     n_cols = len(hex_map)
     if n_cols < 1:
@@ -306,14 +306,14 @@ def calc_happiness(planet_type, hex_map, GP, TP, HP, max_range, RF):
 
 
 def get_cluster_size_list(hex_map, ignored_types=[None, "Em"]):
-    '''
-  Method that iterates over the map and finds clusters of planets
-  It returns a list containing the size of each cluster
-  The length of that list is then the number of clusters
-  A single planet with no neighbours is a cluster of size 1
-  ignored_types is a list of hex content types that should not be part of a cluster,
-  defaults to [None,"Em"]
-  '''
+    """
+    Method that iterates over the map and finds clusters of planets
+    It returns a list containing the size of each cluster
+    The length of that list is then the number of clusters
+    A single planet with no neighbours is a cluster of size 1
+    ignored_types is a list of hex content types that should not be part of a cluster,
+    defaults to [None,"Em"]
+    """
     n_cols = len(hex_map)
     n_rows = len(hex_map[0])
     cluster_sizes = []
@@ -360,21 +360,21 @@ def get_cluster_size_list(hex_map, ignored_types=[None, "Em"]):
 
 
 def number_factor(PD, SC=30.0, OD=0.32153):
-    '''
+    """
     PD - Planet density
     OD - Optimal density
     SC - a number used to scale how bad it is to differ from the
          optimal density. Lower number means less bad
     Returns a number between 0.0 and 1.0 indicating how good the
     density of planets is compared to the optimal density
-    '''
+    """
     diff_from_opt = OD - PD
     exponent = -SC * diff_from_opt * diff_from_opt
     return pow(2.718281828, exponent)
 
 
 def type_factor(NT, NP, SC=30.0):
-    '''
+    """
     NT - Number of planet types in area
     NP - Number of planets in area
     SC - a number used to scale how bad it is to differ from the
@@ -382,7 +382,7 @@ def type_factor(NT, NP, SC=30.0):
     Returns a number between 0.0 and 1.0 indicating how good the ratio
     of different planet types is compared to the optimal ratio
     The optimal is to have as many different planet types as possible
-    '''
+    """
     max_types = 9.0
     if NP < max_types:
         max_types = NP
@@ -395,7 +395,7 @@ def type_factor(NT, NP, SC=30.0):
 
 
 def hex_happiness(col, row, hex_map, NW=0.5, PD_SC=30.0, TR_SC=30.0, radius=3):
-    '''
+    """
     col - column of centre hex
     row - row of centre hex
     hex_map - the map..
@@ -431,7 +431,7 @@ def hex_happiness(col, row, hex_map, NW=0.5, PD_SC=30.0, TR_SC=30.0, radius=3):
           for the optimal number of planet types, and smaller values for
           number of planet types further away from the optimum
     The resulting value should be a number between 0.0 and 1.0
-    '''
+    """
     planet_types = ["Bl", "Br", "Ye", "Or", "Re", "Bl", "Wh", "Ga", "Tr"]
     n_planet_types = len(planet_types)
     exists_in_range = [0.0 for i in range(n_planet_types)]
@@ -464,7 +464,7 @@ def hex_happiness(col, row, hex_map, NW=0.5, PD_SC=30.0, TR_SC=30.0, radius=3):
 
 
 def calc_map_happiness(hex_map, NW=0.5, PD_SC=30.0, TR_SC=5.0, radius=3):
-    '''
+    """
     hex_map - the map used in the calculation
     PD_SC - Planet Density Dropoff Scale. Higher number means that happiness drops
          off faster as the planet density moves away from the ideal density
@@ -478,7 +478,7 @@ def calc_map_happiness(hex_map, NW=0.5, PD_SC=30.0, TR_SC=5.0, radius=3):
      0 - happiness percentage
      1 - total happiness
      3 - number of hexes calculated for (changes depending on map size)
-    '''
+    """
     total_happiness = 0.0
     n_hexes = 0.0
     n_cols = len(hex_map)
@@ -494,9 +494,9 @@ def calc_map_happiness(hex_map, NW=0.5, PD_SC=30.0, TR_SC=5.0, radius=3):
 
 
 class Map(object):
-    def __init__(self, players, random="Yes", keep_core_sectors="No"):
+    def __init__(self, num_players, random="Yes", keep_core_sectors="No"):
         """
-        2-player: 2-3-2, hex 1, 2, 3, 4, 5_,6_,7_ (6_ not in centre)
+        2-player: 2-3-2, hex 1, 2, 3, 4, 5_,6_,7_ (option: 6_ not in centre)
         3- and 4-player: 3-4-3, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 
         centre (x, y) - (hor, ver)
@@ -505,7 +505,7 @@ class Map(object):
         self.map_data: Tupple with sector number and rotation
         """
 
-        self.players = players
+        self.num_players = num_players
         self.random = random
         self.map = None
         self.width = 23
@@ -558,9 +558,9 @@ class Map(object):
         Small = ["1", "5_", "2", "3", "6_", "4", "7_"]
         Large = ["10", "1", "5", "9", "2", "3", "6", "8", "4", "7"]
         index = 0
-        default_sector_rotation = 0
+        # default_sector_rotation = 0
 
-        if self.players == 2:
+        if self.num_players == 2:
             self.map = [["A", "B"], ["C", "D", "E"], ["F", "G"]]
             self.centre = [[(6, 6), (11, 7)], [(3, 13), (8, 14), (13, 15)], [(5, 21), (10, 22)]]
             if self.random == "Yes":
@@ -605,17 +605,43 @@ class Map(object):
                 index += 1
 
     def generate_full_map(self):
+        """
+        Resets the full map, then distributes the sectors
+        """
         self.full_map = [[None for i in range(self.height)] for j in range(self.width)]
         for j, row in enumerate(self.map):
             for i, sector in enumerate(row):
                 content = sector.get_content()
                 position = self.centre[j][i]
-                rel_coor = sector.get_relative_coord()
+                # rel_coor = sector.get_relative_coord()
 
                 for radii, planet_list in enumerate(content):
                     planet_coord_list = get_hexes_at_radius(position[0], position[1], radii)
                     for number, hexagon in enumerate(planet_list):
                         self.full_map[planet_coord_list[number][0]][planet_coord_list[number][1]] = hexagon
+
+    def get_printable_map_data(self):
+        """
+        returns map data that is easy for image creation
+        """
+        map_data = copy.deepcopy(self.map)
+        for j, row in enumerate(self.map):
+            for i, sector in enumerate(row):
+                sector_rotation = sector.get_rotation_deg()
+                sector_number = sector.get_id()
+                map_data[j][i] = [sector_number, sector_rotation]
+        return map_data
+
+    def get_full_map(self):
+        return self.full_map
+
+    def set_map_by_map_data(self, map_data):
+        for j, row in enumerate(self.map):
+            for i, sector in enumerate(row):
+                sector_rotation = map_data[j][i][1]
+                while sector.get_rotation_deg() != sector_rotation:
+                    sector.rotate_sector_once()
+        self.generate_full_map()
 
     def print_map(self):
         print "---------------------"
@@ -659,15 +685,13 @@ class Map(object):
                 self.map_picture.paste(image, (hor, ver), image)
 
     def show_image_map(self):
-        if self.map_picture == None:
-            self.make_image_map(self.clockwise)
+        self.make_image_map(self.clockwise)
         self.map_picture.show()
 
     def set_image_name(self, image_name_without_type):
         self.image_name = image_name_without_type
 
     def save_image_map(self):
-        #if self.map_picture == None:
         self.make_image_map(self.clockwise)
         address = self.image_location + self.image_name + self.image_format
         self.map_picture.save(address)
@@ -814,29 +838,6 @@ class Map(object):
             self.best_balance = 10000.0
         else:
             self.best_balance = 0.0
-
-    def get_printable_map_data(self):
-        """
-        returns map data that is easy for image creation
-        """
-        map_data = copy.deepcopy(self.map)
-        for j, row in enumerate(self.map):
-            for i, sector in enumerate(row):
-                sector_rotation = sector.get_rotation_deg()
-                sector_number = sector.get_id()
-                map_data[j][i] = [sector_number, sector_rotation]
-        return map_data
-
-    def get_full_map(self):
-        return self.full_map
-
-    def set_map_by_map_data(self, map_data):
-        for j, row in enumerate(self.map):
-            for i, sector in enumerate(row):
-                sector_rotation = map_data[j][i][1]
-                while sector.get_rotation_deg() != sector_rotation:
-                    sector.rotate_sector_once()
-        self.generate_full_map()
 
 
 class Sector(object):
