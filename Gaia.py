@@ -386,7 +386,9 @@ def type_factor(NT, NP, SC=30.0):
     max_types = 9.0
     if NP < max_types:
         max_types = NP
-    ratio = NT / max_types
+    ratio = 0.0
+    if max_types > 0.0:
+        ratio = NT / max_types
     diff_from_opt = 1.0 - ratio
     exponent = -SC * diff_from_opt * diff_from_opt
     return pow(2.718281828, exponent)
@@ -492,7 +494,7 @@ def calc_map_happiness(hex_map, NW=0.5, PD_SC=30.0, TR_SC=5.0, radius=3):
 
 
 class Map(object):
-    def __init__(self, players, random="Yes"):
+    def __init__(self, players, random="Yes", keep_core_sectors="No"):
         """
         2-player: 2-3-2, hex 1, 2, 3, 4, 5_,6_,7_ (6_ not in centre)
         3- and 4-player: 3-4-3, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
@@ -508,8 +510,8 @@ class Map(object):
         self.map = None
         self.width = 23
         self.height = 30
-
-        self.minimal_equal_range = 3
+        self.keep_core_sectors = keep_core_sectors
+        self.method = 0
 
         self.clockwise = True
 
@@ -525,24 +527,32 @@ class Map(object):
                         "Br": Planet, "Bl": Planet, "Bk": Planet,
                         "Ye": Planet, "Or": Planet, "Re": Planet, "Wh": Planet}
 
+        #parameters used to eliminate illegal maps after rotation,
+        #if these requirements are not met the rotation will continue
+        self.minimal_equal_range = 3 #minimum range between equal planets (except Gaia and Transdim)
+        self.maximum_cluster_size = 5 #set to 10 to ignore cluster size
+
         self.set_map()
         self.generate_full_map()
 
-        #parameter used in optimization
+        #general parameters used in optimizations
         self.try_count = 100
+        self.max_range = 3
+
+        # parameters used in the happiness calculation v1:
         self.best_balance = 100000.0
         self.best_map_data = self.get_printable_map_data()
-
-        # parameters used in the happiness calculation version 1:
-        self.max_range = 3
         self.range_factor = [1.0, 1.0/6.0, 1.0/12.0, 1.0/18.0]
         self.terraform_param = [1.0, 1.0, 1.0, 1.0]
         self.gaia_param = 1.0
         self.trans_param = 1.0
 
-        # parameters used in optimization version 2:
+        # parameters used in optimization v2:
         self.highest_happiness = 0.0
         self.happiest_map = self.get_printable_map_data()
+        self.NW = 0.5     # 1.0: only planet density (PD), 0.0: only Type Ratio (TR)
+        self.PD_SC = 40.0
+        self.TR_SC = 7.0
 
     def set_map(self):
         Small = ["1", "5_", "2", "3", "6_", "4", "7_"]
@@ -554,20 +564,37 @@ class Map(object):
             self.map = [["A", "B"], ["C", "D", "E"], ["F", "G"]]
             self.centre = [[(6, 6), (11, 7)], [(3, 13), (8, 14), (13, 15)], [(5, 21), (10, 22)]]
             if self.random == "Yes":
-                random.shuffle(Small)
-                #Commented out: in person we dont want hex 6 to be centre tile. For now we will let it be possible
-                #for the map gen. TODO: maybe make it an input parameter?
-                #if Small[3] == "6_":
-                #    centre = Small[0]
-                #    Small[0] = Small[3]
-                #    Small[3] = centre
+                if self.keep_core_sectors == "No":
+                    random.shuffle(Small)
+                    #Commented out: in person we dont want hex 6 to be centre tile. For now we will let it be possible
+                    #for the map gen. TODO: maybe make it an input parameter?
+                    #if Small[3] == "6_":
+                    #    centre = Small[0]
+                    #    Small[0] = Small[3]
+                    #    Small[3] = centre
+                else:
+                    reminding_sectors = ["5_", "6_", "7_"]
+                    random.shuffle(reminding_sectors)
+                    Small[1] = reminding_sectors[0]
+                    Small[4] = reminding_sectors[1]
+                    Small[6] = reminding_sectors[2]
             self.content = Small
         else:
             self.map = [["A", "B", "C"], ["D", "E", "F", "G"], ["H", "I", "J"]]
             self.centre = [[(6, 6), (11, 7), (16, 8)], [(3, 13), (8, 14), (13, 15), (18, 16)],
                            [(5, 21), (10, 22), (15, 23)]]
             if self.random == "Yes":
-                random.shuffle(Large)
+                if self.keep_core_sectors == "No":
+                    random.shuffle(Large)
+                else:
+                    reminding_sectors = ["5", "6", "7", "8", "9", "10"]
+                    random.shuffle(reminding_sectors)
+                    Large[0] = reminding_sectors[0]
+                    Large[2] = reminding_sectors[1]
+                    Large[3] = reminding_sectors[2]
+                    Large[6] = reminding_sectors[3]
+                    Large[7] = reminding_sectors[4]
+                    Large[9] = reminding_sectors[5]
             self.content = Large
 
         for j, row in enumerate(self.map):
@@ -636,26 +663,157 @@ class Map(object):
             self.make_image_map(self.clockwise)
         self.map_picture.show()
 
+    def set_image_name(self, image_name_without_type):
+        self.image_name = image_name_without_type
+
     def save_image_map(self):
-        if self.map_picture == None:
-            self.make_image_map(self.clockwise)
+        #if self.map_picture == None:
+        self.make_image_map(self.clockwise)
         address = self.image_location + self.image_name + self.image_format
         self.map_picture.save(address)
 
     def rotate_map_randomly(self):
         do_rotate = 1
-        num_rotations = 0
+        n_iter = 0
+        core_sectors = ["1", "2", "3", "4"]
         while do_rotate == 1:
             for row in self.map:
                 for sector in row:
+                    if self.keep_core_sectors == "Yes" and sector.get_id() in core_sectors:
+                        continue
                     n_rot = random.randint(0, 5)
                     sector.rotate_sector(n_rot)
             self.generate_full_map()
-            do_rotate = has_equal_neigbours(self.full_map, self.minimal_equal_range - 1) == 1
-            num_rotations += 1
-            #print num_rotations
-        if num_rotations > 2:
-            print num_rotations
+            if has_equal_neigbours(self.full_map, self.minimal_equal_range - 1) == 1:
+                n_iter += 1
+                continue
+            if self.maximum_cluster_size > 9:
+                break
+            cluster_sizes = get_cluster_size_list(self.full_map)
+            if max(cluster_sizes) > self.maximum_cluster_size:
+                n_iter += 1
+                continue
+            do_rotate = 0
+        #print n_iter
+
+    def set_method(self, method):
+        self.method = method
+        self.reset_best_map_value()
+
+    def set_try_count(self, try_count):
+        self.try_count = try_count
+
+    def set_max_range(self, max_range):
+        self.max_range = max_range
+
+    def set_max_cluster_size(self, cluster_size):
+        self.maximum_cluster_size = cluster_size
+
+    def set_method_0_params(self, terraform_param, gaia_param, trans_param, range_factor):
+        self.range_factor = range_factor
+        self.terraform_param = terraform_param
+        self.gaia_param = gaia_param
+        self.trans_param = trans_param
+
+    def set_method_1_params(self, NW, PD_SC, TR_SC):
+        self.NW = NW
+        self.PD_SC = PD_SC
+        self.TR_SC = TR_SC
+
+    def calculate_balance(self, print_happiness=0):
+        if self.method == 0:
+            '''Optimize for Each planet type to have neighbours it likes'''
+            planet_happiness = [0.0] * 7
+            for i in range(7):
+                planet_happiness[i] = calc_happiness(color_wheel[i],
+                                                     self.full_map,
+                                                     self.gaia_param,
+                                                     self.trans_param,
+                                                     self.terraform_param,
+                                                     self.max_range,
+                                                     self.range_factor)
+            stats = get_stats(planet_happiness)
+            if print_happiness != 0:
+                print "Color Happiness:"
+                for i in range(7):
+                    if color_wheel[i] == "Bk":
+                        print " Grey   - {:04.2f}".format(planet_happiness[i])
+                    if color_wheel[i] == "Br":
+                        print " Brown  - {:04.2f}".format(planet_happiness[i])
+                    if color_wheel[i] == "Ye":
+                        print " Yellow - {:04.2f}".format(planet_happiness[i])
+                    if color_wheel[i] == "Or":
+                        print " Orange - {:04.2f}".format(planet_happiness[i])
+                    if color_wheel[i] == "Re":
+                        print " Red    - {:04.2f}".format(planet_happiness[i])
+                    if color_wheel[i] == "Bl":
+                        print " Blue   - {:04.2f}".format(planet_happiness[i])
+                    if color_wheel[i] == "Wh":
+                        print " White  - {:04.2f}".format(planet_happiness[i])
+                stat_string = "Stats: "
+                for i in range(4):
+                    if i == 0:
+                        stat_string += "Avg = {:04.2f}".format(stats[i])
+                    if i == 1:
+                        stat_string += ", Var = {:04.3f}".format(stats[i])
+                    if i == 2:
+                        stat_string += ", Min = {:04.2f}".format(stats[i])
+                    if i == 3:
+                        stat_string += ", Max = {:04.2f}".format(stats[i])
+                print stat_string
+            return stats[1]
+        if self.method == 1:
+            '''Optimize for even distribution of planets/planet types'''
+            hp = calc_map_happiness(self.full_map, self.NW, self.PD_SC, self.TR_SC, self.max_range)[0]
+            if print_happiness != 0:
+                print "Happiness = {:04.2f}".format(hp)
+            return hp
+        if self.method == 2:
+            '''Optimize for big clusters!'''
+            cluster_sizes = get_cluster_size_list(self.full_map)
+            stats = get_stats(cluster_sizes)
+            avg_size = stats[0]
+            if print_happiness != 0:
+                print cluster_sizes
+                print stats
+            return avg_size
+
+    def is_better_balance(self, balance):
+        '''
+        For the various optimization methods this tells if bigger or smaller is better
+        '''
+        smaller_is_better = [0]
+        bigger_is_better = [1, 2]
+        if self.method in smaller_is_better:
+            return balance < self.best_balance
+        elif self.method in bigger_is_better:
+            return balance > self.best_balance
+
+    def balance_map(self):
+        self.reset_best_map_value()
+        self.best_map_data = self.get_printable_map_data()
+        progress = 0
+        for i in range(self.try_count):
+            #if self.try_count%(self.try_count/10) == 0:
+            #    print "progress = " + str(progress)
+            #    progress += 10
+            self.rotate_map_randomly()
+            balance = self.calculate_balance()
+            if self.is_better_balance(balance):
+                self.best_balance = balance
+                self.best_map_data = self.get_printable_map_data()
+
+    def get_best_map_data(self):
+        return self.best_map_data
+
+    def set_to_balanced_map(self):
+        self.set_map_by_map_data(self.best_map_data)
+
+    def reset_best_map_value(self):
+        if self.is_better_balance(0.0):
+            self.best_balance = 10000.0
+        else:
+            self.best_balance = 0.0
 
     def get_printable_map_data(self):
         """
@@ -672,99 +830,6 @@ class Map(object):
     def get_full_map(self):
         return self.full_map
 
-    def set_try_count(self, try_count):
-        self.try_count = try_count
-
-    def set_max_range(self, max_range):
-        self.max_range = max_range
-
-    def set_range_factor(self, range_factor):
-        self.range_factor = range_factor
-
-    def set_terraform_param(self, terraform_param):
-        self.terraform_param = terraform_param
-
-    def set_gaia_param(self, gaia_param):
-        self.gaia_param = gaia_param
-
-    def set_trans_param(self, trans_param):
-        self.trans_param = trans_param
-
-    def calculate_balance(self, print_happiness=0):
-        planet_happiness = [0.0] * 7
-        for i in range(7):
-            planet_happiness[i] = calc_happiness(color_wheel[i],
-                                                 self.full_map,
-                                                 self.gaia_param,
-                                                 self.trans_param,
-                                                 self.terraform_param,
-                                                 self.max_range,
-                                                 self.range_factor)
-        stats = get_stats(planet_happiness)
-
-        if print_happiness != 0:
-            print "Color Happiness:"
-            for i in range(7):
-                if color_wheel[i] == "Bk":
-                    print " Grey   - {:04.2f}".format(planet_happiness[i])
-                if color_wheel[i] == "Br":
-                    print " Brown  - {:04.2f}".format(planet_happiness[i])
-                if color_wheel[i] == "Ye":
-                    print " Yellow - {:04.2f}".format(planet_happiness[i])
-                if color_wheel[i] == "Or":
-                    print " Orange - {:04.2f}".format(planet_happiness[i])
-                if color_wheel[i] == "Re":
-                    print " Red    - {:04.2f}".format(planet_happiness[i])
-                if color_wheel[i] == "Bl":
-                    print " Blue   - {:04.2f}".format(planet_happiness[i])
-                if color_wheel[i] == "Wh":
-                    print " White  - {:04.2f}".format(planet_happiness[i])
-            stat_string = "Stats: "
-            for i in range(4):
-                if i == 0:
-                    stat_string += "Avg = {:04.2f}".format(stats[i])
-                if i == 1:
-                    stat_string += ", Var = {:04.3f}".format(stats[i])
-                if i == 2:
-                    stat_string += ", Min = {:04.2f}".format(stats[i])
-                if i == 3:
-                    stat_string += ", Max = {:04.2f}".format(stats[i])
-            print stat_string
-        return stats[1]
-
-    def balance_map(self):
-        self.best_balance = self.calculate_balance()
-        self.best_map_data = self.get_printable_map_data()
-        progress = 0
-        for i in range(self.try_count):
-            #if self.try_count%(self.try_count/10) == 0:
-            #    print "progress = " + str(progress)
-            #    progress += 10
-            self.rotate_map_randomly()
-            balance = self.calculate_balance()
-            if balance < self.best_balance:
-                self.best_balance = balance
-                self.best_map_data = self.get_printable_map_data()
-
-    def calculate_balance_v2(self, print_happiness=0):
-        hp = calc_map_happiness(self.full_map, 0, 30.0, 5.0, 2)[0]
-        if print_happiness != 0:
-            print "Happiness = {:04.2f}".format(hp)
-        return hp
-
-    def balance_map_v2(self):
-        self.highest_happiness = self.calculate_balance_v2()
-        self.happiest_map = self.get_printable_map_data()
-        for i in range(self.try_count):
-            self.rotate_map_randomly()
-            happiness = self.calculate_balance_v2(0)
-            if happiness > self.highest_happiness:
-                self.highest_happiness = happiness
-                self.happiest_map = self.get_printable_map_data()
-
-    def get_best_map_data(self):
-        return self.best_map_data
-
     def set_map_by_map_data(self, map_data):
         for j, row in enumerate(self.map):
             for i, sector in enumerate(row):
@@ -772,12 +837,6 @@ class Map(object):
                 while sector.get_rotation_deg() != sector_rotation:
                     sector.rotate_sector_once()
         self.generate_full_map()
-
-    def set_to_balanced_map(self):
-        self.set_map_by_map_data(self.best_map_data)
-
-    def set_to_balanced_map_v2(self):
-        self.set_map_by_map_data(self.happiest_map)
 
 
 class Sector(object):
@@ -884,20 +943,27 @@ class Planet(Hexagon):
 
 
 if __name__ == "__main__":
-    test_map = Map(4, "No")
-    test_map.set_try_count(100)
-    test_map.calculate_balance_v2(1)
+    test_map = Map(4, "Yes", "No")
+    test_map.set_method(1)
+    test_map.set_try_count(500)
+    test_map.set_max_range(3)
+    test_map.set_max_cluster_size(10)
 
-    test_map.balance_map()
-    test_map.set_to_balanced_map()
-    test_map.calculate_balance(1)
-    test_map.show_image_map()
-    test_map.balance_map_v2()
-    test_map.set_to_balanced_map_v2()
-    test_map.calculate_balance_v2(1)
-    test_map.make_image_map(test_map.get_best_map_data())
-    hex_map = test_map.get_full_map()
-    print has_equal_neigbours(hex_map)
+    for i in range(11,16):
+        print "Balancing map " + str(i)+"..."
+        test_map.balance_map()
+        print "Saving image..."
+        test_map.set_to_balanced_map()
+        test_map.calculate_balance(1)
+        if i < 10:
+            test_map.set_image_name("map0"+str(i))
+        else:
+            test_map.set_image_name("map" + str(i))
+        test_map.save_image_map()
+
+    #test_map.show_image_map()
+    #hex_map = test_map.get_full_map()
+    #print has_equal_neigbours(hex_map)
 
     '''
     for i in range(7):
@@ -911,7 +977,8 @@ if __name__ == "__main__":
         print " - Minimum distance:     " + str(stats[2])
         print " - Maximum distance:     " + str(stats[3])
     '''
-    clusters = get_cluster_size_list(hex_map)
-    clusters.sort()
-    print clusters
+    #clusters = get_cluster_size_list(hex_map)
+    #print max(clusters)
+    #clusters.sort()
+    #print clusters
 
