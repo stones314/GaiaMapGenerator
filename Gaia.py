@@ -507,13 +507,9 @@ class Map(object):
 
         self.num_players = num_players
         self.random = random
-        self.map = None
         self.width = 23
         self.height = 30
         self.keep_core_sectors = keep_core_sectors
-        self.method = 0
-
-        self.clockwise = True
 
         self.image_location = "images/"
         self.image_name = "Gaia_map"
@@ -527,29 +523,32 @@ class Map(object):
                         "Br": Planet, "Bl": Planet, "Bk": Planet,
                         "Ye": Planet, "Or": Planet, "Re": Planet, "Wh": Planet}
 
+        self.clockwise = True
+        self.method = 0
+
         #parameters used to eliminate illegal maps after rotation,
         #if these requirements are not met the rotation will continue
         self.minimal_equal_range = 3 #minimum range between equal planets (except Gaia and Transdim)
         self.maximum_cluster_size = 5 #set to 10 to ignore cluster size
 
+        self.map = None
         self.set_map()
         self.generate_full_map()
 
         #general parameters used in optimizations
         self.try_count = 100
-        self.max_range = 3
-
-        # parameters used in the happiness calculation v1:
-        self.best_balance = 100000.0
+        self.search_radius = 2
+        self.best_balance = 0.0
+        self.reset_best_map_value()
         self.best_map_data = self.get_printable_map_data()
+
+        # parameters used in the happiness calculation v0:
         self.range_factor = [1.0, 1.0/6.0, 1.0/12.0, 1.0/18.0]
-        self.terraform_param = [1.0, 1.0, 1.0, 1.0]
-        self.gaia_param = 1.0
+        self.terraform_param = [2.0, 1.0, 1.0, 1.0]
+        self.gaia_param = 2.0
         self.trans_param = 1.0
 
-        # parameters used in optimization v2:
-        self.highest_happiness = 0.0
-        self.happiest_map = self.get_printable_map_data()
+        # parameters used in optimization v1:
         self.NW = 0.5     # 1.0: only planet density (PD), 0.0: only Type Ratio (TR)
         self.PD_SC = 40.0
         self.TR_SC = 7.0
@@ -727,8 +726,11 @@ class Map(object):
     def set_try_count(self, try_count):
         self.try_count = try_count
 
-    def set_max_range(self, max_range):
-        self.max_range = max_range
+    def set_search_radius(self, search_radius):
+        self.search_radius = search_radius
+
+    def set_minimum_equal_range(self, min_equal_range):
+        self.minimal_equal_range = min_equal_range
 
     def set_max_cluster_size(self, cluster_size):
         self.maximum_cluster_size = cluster_size
@@ -754,7 +756,7 @@ class Map(object):
                                                      self.gaia_param,
                                                      self.trans_param,
                                                      self.terraform_param,
-                                                     self.max_range,
+                                                     self.search_radius,
                                                      self.range_factor)
             stats = get_stats(planet_happiness)
             if print_happiness != 0:
@@ -788,7 +790,7 @@ class Map(object):
             return stats[1]
         if self.method == 1:
             '''Optimize for even distribution of planets/planet types'''
-            hp = calc_map_happiness(self.full_map, self.NW, self.PD_SC, self.TR_SC, self.max_range)[0]
+            hp = calc_map_happiness(self.full_map, self.NW, self.PD_SC, self.TR_SC, self.search_radius)[0]
             if print_happiness != 0:
                 print "Happiness = {:04.2f}".format(hp)
             return hp
@@ -834,7 +836,7 @@ class Map(object):
         self.set_map_by_map_data(self.best_map_data)
 
     def reset_best_map_value(self):
-        if self.is_better_balance(0.0):
+        if self.is_better_balance(-1.0):
             self.best_balance = 10000.0
         else:
             self.best_balance = 0.0
@@ -945,12 +947,13 @@ class Planet(Hexagon):
 
 if __name__ == "__main__":
     test_map = Map(4, "Yes", "No")
-    test_map.set_method(1)
-    test_map.set_try_count(500)
-    test_map.set_max_range(3)
-    test_map.set_max_cluster_size(10)
+    test_map.set_method(0)
+    test_map.set_try_count(10)
+    test_map.set_search_radius(2)
+    test_map.set_max_cluster_size(5)
+    test_map.set_minimum_equal_range(3)
 
-    for i in range(11,16):
+    for i in range(11, 16):
         print "Balancing map " + str(i)+"..."
         test_map.balance_map()
         print "Saving image..."
