@@ -526,6 +526,8 @@ class Map(object):
         self.clockwise = True
         self.method = 0
 
+        self.debug_level = 0
+
         #parameters used to eliminate illegal maps after rotation,
         #if these requirements are not met the rotation will continue
         self.minimal_equal_range = 3 #minimum range between equal planets (except Gaia and Transdim)
@@ -717,7 +719,11 @@ class Map(object):
                 n_iter += 1
                 continue
             do_rotate = 0
-        #print n_iter
+        if self.debug_level == 1:
+            print n_iter
+
+    def set_debug_level(self, debug_level):
+        self.debug_level = debug_level
 
     def set_method(self, method):
         self.method = method
@@ -948,22 +954,42 @@ class Planet(Hexagon):
 if __name__ == "__main__":
     test_map = Map(4, "Yes", "No")
     test_map.set_method(0)
-    test_map.set_try_count(10)
+    test_map.set_debug_level(1)
+    test_map.set_try_count(1)
     test_map.set_search_radius(2)
-    test_map.set_max_cluster_size(5)
+    test_map.set_max_cluster_size(4)
     test_map.set_minimum_equal_range(3)
 
-    for i in range(11, 16):
-        print "Balancing map " + str(i)+"..."
+    #method 0 params:
+    terra_param = [1.0, 1.0, 0.1, 0.8]
+    gaia_param = 1.0
+    trans_param = 0.5
+    range_factor = [1.0, 1.0, 0.6, 0.05]
+    test_map.set_method_0_params(terra_param, gaia_param, trans_param, range_factor)
+
+    do_loop = 2
+    if do_loop == 1:
+        for i in range(16, 21):
+            print "Balancing map " + str(i)+"..."
+            test_map.balance_map()
+            print "Balance finished, best map have following data:"
+            test_map.set_to_balanced_map()
+            test_map.calculate_balance(1)
+            print "Saving image...\n"
+            if i < 10:
+                test_map.set_image_name("map0"+str(i))
+            else:
+                test_map.set_image_name("map" + str(i))
+            test_map.save_image_map()
+    elif do_loop == 2:
         test_map.balance_map()
-        print "Saving image..."
         test_map.set_to_balanced_map()
         test_map.calculate_balance(1)
-        if i < 10:
-            test_map.set_image_name("map0"+str(i))
-        else:
-            test_map.set_image_name("map" + str(i))
+        print "Saving image...\n"
+        test_map.set_image_name("test_map")
         test_map.save_image_map()
+    else:
+        test_map.calculate_balance(1)
 
     #test_map.show_image_map()
     #hex_map = test_map.get_full_map()
