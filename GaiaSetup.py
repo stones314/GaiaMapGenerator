@@ -145,10 +145,8 @@ class SetupTab(wx.Panel):
         super(SetupTab, self).__init__(parent=parent, id=wx.ID_ANY)
         self.parent = parent
         self.default_num_players = self.parent.get_default_num_players()
-        self.resize_factor = 0.8
 
         self.hsizer_input = wx.BoxSizer(wx.HORIZONTAL)
-        self.hsizer_output = wx.BoxSizer(wx.HORIZONTAL)
         self.vsizer_input = wx.BoxSizer(wx.VERTICAL)
         self.vsizer_overall = wx.BoxSizer(wx.VERTICAL)
 
@@ -163,22 +161,42 @@ class SetupTab(wx.Panel):
         self.hsizer_input.Add(self.vsizer_input, 1, wx.EXPAND | wx.ALL, 20)
         self.hsizer_input.Add(btn_randomize, 1, wx.EXPAND | wx.ALL, 20)
         self.vsizer_overall.Add(self.hsizer_input, 0)    # setup
+
+        self.SetSizer(self.vsizer_overall)
+
+    def on_randomize(self, event):
+        n_players = int(self.players_number.GetValue())
+        random_setup = RandomSetup(self.parent, n_players)
+        random_setup.Show(True)
+
+class RandomSetup(wx.Frame):
+    def __init__(self, parent, num_players):
+        super(RandomSetup, self).__init__(parent, title="Random setup", size=(1200, 950))
+        self.parent = parent
+        self.num_players = num_players
+        self.resize_factor = 0.8
+
+        self.hsizer_output = wx.BoxSizer(wx.HORIZONTAL)
+        self.vsizer_overall = wx.BoxSizer(wx.VERTICAL)
+
         vsizer_output = wx.BoxSizer(wx.VERTICAL)
 
         self.hsizer_tech_tracks = wx.BoxSizer(wx.HORIZONTAL)
         self.hsizer_extra_tech = wx.BoxSizer(wx.HORIZONTAL)
-        self.hsizer_round_score = wx.BoxSizer(wx.HORIZONTAL)
         self.hsizer_boosters = wx.BoxSizer(wx.HORIZONTAL)
+        self.hsizer_round_score = wx.BoxSizer(wx.HORIZONTAL)
+        self.vsizer_end_score = wx.BoxSizer(wx.VERTICAL)
+
         self.htracks = [self.hsizer_tech_tracks, self.hsizer_extra_tech, self.hsizer_round_score, self.hsizer_boosters]
 
         background = wx.Image(background_path, wx.BITMAP_TYPE_ANY)
         background_img = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(background))
 
-        for i in range(6):
-            panel = wx.Panel(self)
-            panel.BackgroundColour = color_list[i]
+        for i, list in enumerate(list_of_pieces):
+            random.shuffle(list)
 
-            if i == 0: # Brown
+        for i in range(6):
+            if i == 0:  # Brown
                 hsizer = wx.BoxSizer(wx.HORIZONTAL)
                 brown_vsizer1 = wx.BoxSizer(wx.VERTICAL)
                 brown_vsizer2 = wx.BoxSizer(wx.VERTICAL)
@@ -188,8 +206,8 @@ class SetupTab(wx.Panel):
                 W = brown_fed.GetWidth()
                 H = brown_fed.GetHeight()
                 local_factor = 0.8
-                brown_fed = brown_fed.Scale(int(W*self.resize_factor*local_factor),
-                                            int(H*self.resize_factor*local_factor))
+                brown_fed = brown_fed.Scale(int(W * self.resize_factor * local_factor),
+                                            int(H * self.resize_factor * local_factor))
                 brown_fed_image = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(brown_fed))
                 brown_vsizer1.Add(brown_fed_image, 1, wx.ALL)
 
@@ -214,9 +232,7 @@ class SetupTab(wx.Panel):
 
                 self.hsizer_tech_tracks.Add(hsizer, 1, wx.EXPAND | wx.ALL)
 
-                #panel.SetSizer(hsizer)
-                #self.hsizer_tech_tracks.Add(panel, 1, wx.EXPAND | wx.ALL)
-            else:
+            else: # all other tracks
                 vsizer = wx.BoxSizer(wx.VERTICAL)
 
                 path1 = image_path + list_of_pieces[1][i] + image_format
@@ -237,77 +253,71 @@ class SetupTab(wx.Panel):
 
                 self.hsizer_tech_tracks.Add(vsizer, 1, wx.EXPAND | wx.ALL)
 
-                #panel.SetSizer(vsizer)
-                #self.hsizer_tech_tracks.Add(panel, 1, wx.EXPAND | wx.ALL)
-
-
-
-
-
         vsizer_output.Add(self.hsizer_tech_tracks, 1, wx.EXPAND | wx.ALL, 5)
+
+        # Extra tech tiles
+        extra_tech = list_of_pieces[2][6:9]
+
+        for i in range(len(extra_tech)):
+            path = image_path + extra_tech[i] + image_format
+            img = wx.Image(path, wx.BITMAP_TYPE_ANY)
+            W = img.GetWidth()
+            H = img.GetHeight()
+            img = img.Scale(int(W * self.resize_factor), int(H * self.resize_factor))
+            img_bm = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img))
+
+            self.hsizer_extra_tech.Add(img_bm, 1, wx.ALL, 5)
+
         vsizer_output.Add(self.hsizer_extra_tech, 1, wx.EXPAND | wx.ALL, 5)
-        vsizer_output.Add(self.hsizer_round_score, 1, wx.EXPAND | wx.ALL, 5)
+
+        # Boosters
+        n_players = self.num_players
+        num_boosters = n_players + 3
+
+        for i in range(num_boosters):
+            path = image_path + list_of_pieces[4][i] + image_format
+            img = wx.Image(path, wx.BITMAP_TYPE_ANY)
+            W = img.GetWidth()
+            H = img.GetHeight()
+            img = img.Scale(int(W * self.resize_factor), int(H * self.resize_factor))
+            img_bm = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img))
+
+            self.hsizer_boosters.Add(img_bm, 1, wx.ALL, 5)
+
         vsizer_output.Add(self.hsizer_boosters, 1, wx.EXPAND | wx.ALL, 5)
+
+        # Round score
+        for i in range(6):
+            path = image_path + list_of_pieces[5][i] + image_format
+            img = wx.Image(path, wx.BITMAP_TYPE_ANY)
+            W = img.GetWidth()
+            H = img.GetHeight()
+            img = img.Scale(int(W * self.resize_factor), int(H * self.resize_factor))
+            img_bm = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img))
+
+            self.hsizer_round_score.Add(img_bm, 1, wx.ALL, 5)
+
+        # End game score
+        for i in range(2):
+            path = image_path + list_of_pieces[6][i] + image_format
+            img = wx.Image(path, wx.BITMAP_TYPE_ANY)
+            W = img.GetWidth()
+            H = img.GetHeight()
+            img = img.Scale(int(W * self.resize_factor), int(H * self.resize_factor))
+            img_bm = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img))
+
+            self.vsizer_end_score.Add(img_bm, 1, wx.ALL, 5)
+
+        self.hsizer_round_score.Add(self.vsizer_end_score, 1, wx.ALL, 5)
+        vsizer_output.Add(self.hsizer_round_score, 1, wx.EXPAND | wx.ALL, 5)
 
         self.hsizer_output.Add(vsizer_output, 1, wx.EXPAND | wx.ALL, 5)
         self.vsizer_overall.Add(self.hsizer_output, 0, wx.EXPAND)
 
         self.SetSizer(self.vsizer_overall)
 
-
-    def on_randomize(self, event):
-        overall_vsizer = wx.BoxSizer(wx.VERTICAL)
-
-        for i in range(len(list_of_pieces)):
-            random.shuffle(list_of_pieces[i])
-
-        for i in range(6):
-            if i == 0: # Brown
-                hsizer = wx.BoxSizer(wx.HORIZONTAL)
-                brown_vsizer1 = wx.BoxSizer(wx.VERTICAL)
-                brown_vsizer2 = wx.BoxSizer(wx.VERTICAL)
-
-                path = image_path + list_of_pieces[0][0] + image_format
-                brown_fed = wx.Image(path, wx.BITMAP_TYPE_ANY)
-                brown_fed_image = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(brown_fed))
-                brown_vsizer1.Add(brown_fed_image, 0, wx.ALL, 5)
-
-                path1 = image_path + list_of_pieces[1][i] + image_format
-                img1 = wx.Image(path1, wx.BITMAP_TYPE_ANY)
-                img1_bm = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img1))
-                path2 = image_path + list_of_pieces[2][i] + image_format
-                img2 = wx.Image(path2, wx.BITMAP_TYPE_ANY)
-                img2_bm = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img2))
-
-                brown_vsizer2.Add(img1_bm, 0, wx.ALL, 5)
-                brown_vsizer2.Add(img2_bm, 0, wx.ALL, 5)
-
-                hsizer.Add(brown_vsizer1, 1, wx.ALL, 5)
-                hsizer.Add(brown_vsizer2, 1, wx.ALL, 5)
-                self.hsizer_tech_tracks.Add(hsizer, 1, wx.EXPAND | wx.ALL, 20)
-            else:
-                vsizer = wx.BoxSizer(wx.VERTICAL)
-
-                path1 = image_path + list_of_pieces[1][i] + image_format
-                img1 = wx.Image(path1, wx.BITMAP_TYPE_ANY)
-                img1_bm = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img1))
-                path2 = image_path + list_of_pieces[2][i] + image_format
-                img2 = wx.Image(path2, wx.BITMAP_TYPE_ANY)
-                img2_bm = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img2))
-
-                vsizer.Add(img1_bm, 0, wx.ALL, 5)
-                vsizer.Add(img2_bm, 0, wx.ALL, 5)
-                self.hsizer_tech_tracks.Add(vsizer, 1, wx.EXPAND | wx.ALL, 20)
-
-        n_players = int(self.players_number.GetValue())
-        num_boosters = n_players + 3
-
-        # Tech tile distribution
-        row_1 = list_of_pieces[2][0:6]
-        row_2 = list_of_pieces[2][6:9]
-
-        list_of_pieces[2] = row_1
-        list_of_pieces[3] = row_2
+        self.Centre()
+        self.Show()
 
 if __name__ == "__main__":
     app = wx.App()
