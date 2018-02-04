@@ -45,6 +45,7 @@ class MainFrame(wx.Frame):
 
         self.abort = False
         self.SetBackgroundColour(wx.WHITE)
+        self.quality_description = ""
 
         ico = wx.Icon('images/gaia_icon.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(ico)
@@ -60,6 +61,7 @@ class MainFrame(wx.Frame):
         btn_randomize = wx.Button(self, wx.ID_PAGE_SETUP, label="Randomize setup", size=(140, 40))
         self.Bind(wx.EVT_BUTTON, self.on_randomize, btn_randomize)
         self.progress = wx.StaticText(self, 0, str("Map progress: 0%"))
+        self.balance = wx.StaticText(self, 0, str(""))
         self.btn_abort = wx.Button(self, wx.ID_ABORT, label="Abort", size=(80, 40))
         self.Bind(wx.EVT_BUTTON, self.on_abort, self.btn_abort)
 
@@ -68,10 +70,14 @@ class MainFrame(wx.Frame):
         vsizer_player_info.Add(players_info_text, 1)
         vsizer_player_info.Add(self.num_players, 1)
 
+        vsizer_progress = wx.BoxSizer(wx.VERTICAL)
+        vsizer_progress.Add(self.progress, 1, wx.EXPAND | wx.ALL)
+        vsizer_progress.Add(self.balance, 1, wx.EXPAND | wx.ALL)
+
         hsizer_main.Add(vsizer_player_info, 1, wx.EXPAND | wx.ALL, 10)
         hsizer_main.Add(btn_make_map, 2, wx.EXPAND | wx.ALL, 10)
         hsizer_main.Add(btn_randomize, 2, wx.EXPAND | wx.ALL, 10)
-        hsizer_main.Add(self.progress, 1, wx.EXPAND | wx.ALL, 25)
+        hsizer_main.Add(vsizer_progress, 1, wx.EXPAND | wx.ALL, 20)
         hsizer_main.Add(self.btn_abort, 1, wx.EXPAND | wx.ALL, 10)
 
 
@@ -321,10 +327,14 @@ class MainFrame(wx.Frame):
         map.set_max_cluster_size(cluster_size)
         map.set_minimum_equal_range(min_neighbor_distance)
 
-        if method == 0:
+        if method == 0: #
             map.set_method_0_params(terra_param, gaia_param, trans_param, range_factor)
+            self.quality_description = "Variance"
         elif method == 1:
             map.set_method_1_params(nearness_param, density_param, ratio_param)
+            self.quality_description = "Quality"
+        elif method == 2:
+            self.quality_description = "Av. size"
 
         self.enable_abort_btn(True)
         map.balance_map(self.set_progress, self.should_abort)
@@ -345,15 +355,19 @@ class MainFrame(wx.Frame):
     def get_default_num_players(self):
         return self.default_num_players
 
-    def set_progress(self, progress):
+    def set_progress(self, progress, balance):
         wx.Yield()
+        self.quality_description
         if progress == 0:
             self.progress.SetLabel("Map progress: 0%")
+            self.balance.SetLabel(self.quality_description + ": NA")
         elif progress < 100:
             self.progress.SetLabel("Map progress: " + str(progress) + "%")
+            self.balance.SetLabel(self.quality_description  + ": {:06.4f}".format(balance))
         else:
             self.enable_abort_btn(False)
             self.progress.SetLabel("Creating image...")
+            self.balance.SetLabel(self.quality_description  + ": {:06.4f}".format(balance))
 
     def enable_abort_btn(self, boolean):
         if boolean:
@@ -362,7 +376,6 @@ class MainFrame(wx.Frame):
         else:
             self.btn_abort.SetBackgroundColour(None)
             self.btn_abort.Disable()
-
 
     def should_abort(self):
         return self.abort
@@ -561,7 +574,9 @@ class PopupWindow(wx.PopupWindow):
         self.SetSize(size)
 
         if header:
-            pass
+            header = wx.StaticText(self, 1, header)
+
+
 
         default_font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
         self.SetFont(default_font)
