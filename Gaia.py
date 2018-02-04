@@ -884,7 +884,7 @@ class Map(object):
     def balance_map(self, print_progress_func=None):
         self.reset_best_map_value()
         self.best_map_data = self.get_printable_map_data()
-        progress = 0
+        progress = 1
         for try_no in range(self.try_count):
             self.rotate_map_randomly()
             if try_no % (self.try_count/100) == 0:
