@@ -19,10 +19,15 @@ FED = ['FEDknw', 'FEDore', 'FEDcre', 'FEDqic', 'FEDpwt']
 
 list_of_pieces = [FED[:], ADV[:], TEC[:], TEC[:], BOO[:], RND[:], FIN[:]]
 
-terra_param = [1.0, 1.0, 0.1, 0.8]
-gaia_param = 1.0
-trans_param = 0.5
-range_factor = [1.0, 1.0, 0.6, 0.05]
+default_terra_param = [1.0, 1.0, 0.1, 0.8]
+default_gaia_param = 1.0
+default_trans_param = 0.5
+default_range_factor = [1.0, 1.0, 0.6, 0.05]
+
+default_nearness_param = 0.5
+default_density_param = 40
+default_ratio_param = 7
+
 
 class MainFrame(wx.Frame):
     def __init__(self, parent=None):
@@ -35,7 +40,8 @@ class MainFrame(wx.Frame):
         self.default_num_players = 2
         self.SetBackgroundColour(wx.WHITE)
 
-        #icon
+        ico = wx.Icon('images/gaia_icon.ico', wx.BITMAP_TYPE_ICO)
+        self.SetIcon(ico)
 
         vsizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -43,14 +49,14 @@ class MainFrame(wx.Frame):
         vsizer_player_info = wx.BoxSizer(wx.VERTICAL)
 
         players_info_text = wx.StaticText(self, -1, "Number of players")
-        self.players_number = wx.TextCtrl(self, value=str(self.default_num_players))
+        self.num_players = wx.TextCtrl(self, value=str(self.default_num_players))
         btn_make_map = wx.Button(self, wx.ID_ADD, label="Generate map", size=(120, 40))
         self.Bind(wx.EVT_BUTTON, self.on_make_map, btn_make_map)
         btn_randomize = wx.Button(self, wx.ID_PAGE_SETUP, label="Randomize setup", size=(140, 40))
         self.Bind(wx.EVT_BUTTON, self.on_randomize, btn_randomize)
 
         vsizer_player_info.Add(players_info_text, 1)
-        vsizer_player_info.Add(self.players_number, 1)
+        vsizer_player_info.Add(self.num_players, 1)
 
         hsizer_main.Add(vsizer_player_info, 1, wx.EXPAND | wx.ALL, 10)
         hsizer_main.Add(btn_make_map, 1, wx.EXPAND | wx.ALL, 10)
@@ -65,65 +71,73 @@ class MainFrame(wx.Frame):
         vsizer_info = wx.BoxSizer(wx.VERTICAL)
 
         methods = ["Neighbors", "Distribution", "Big clusters"]
-        method_box = wx.RadioBox(self, label="Optimization method", choices=methods)
-        vsizer_setup.Add(method_box, -1, wx.EXPAND | wx.ALL, 10)
+        self.method_box = wx.RadioBox(self, label="Optimization method", choices=methods)
+        vsizer_setup.Add(self.method_box, -1, wx.EXPAND | wx.ALL, 10)
 
         hsizer_iterations = wx.BoxSizer(wx.HORIZONTAL)
         num_iterations_txt = wx.StaticText(self, 0, "Number of iterations")
-        num_iterations = wx.TextCtrl(self, value=str(10)) # TODO: set default
+        self.num_iterations = wx.TextCtrl(self, value=str(10)) # TODO: set default
 
         hsizer_iterations.Add(num_iterations_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_iterations.Add(num_iterations, 1)
+        hsizer_iterations.Add(self.num_iterations, 1)
         vsizer_setup_2.Add(hsizer_iterations, 1, wx.EXPAND | wx.ALL)
+
+        hsizer_radius = wx.BoxSizer(wx.HORIZONTAL)
+        radius_txt = wx.StaticText(self, 0, "Relevant neighbor radius")
+        self.radius = wx.TextCtrl(self, value=str(2))  # TODO: set default
+
+        hsizer_radius.Add(radius_txt, 3, wx.EXPAND | wx.ALL, 5)
+        hsizer_radius.Add(self.radius, 1)
+        vsizer_setup_2.Add(hsizer_radius, 1, wx.EXPAND | wx.ALL)
 
         hsizer_cluster = wx.BoxSizer(wx.HORIZONTAL)
         cluster_txt = wx.StaticText(self, 0, "Max cluster size")
-        cluster_size = wx.TextCtrl(self, value=str(4))  # TODO: set default
+        self.cluster_size = wx.TextCtrl(self, value=str(4))  # TODO: set default
 
         hsizer_cluster.Add(cluster_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_cluster.Add(cluster_size, 1)
+        hsizer_cluster.Add(self.cluster_size, 1)
         vsizer_setup_2.Add(hsizer_cluster, 1, wx.EXPAND | wx.ALL)
 
         hsizer_neighbor = wx.BoxSizer(wx.HORIZONTAL)
         neighbor_txt = wx.StaticText(self, 0, "Minimum distance between equal planets")
-        min_neighbor_distance = wx.TextCtrl(self, value=str(2))  # TODO: set default
+        self.min_neighbor_distance = wx.TextCtrl(self, value=str(2))  # TODO: set default
 
         hsizer_neighbor.Add(neighbor_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_neighbor.Add(min_neighbor_distance, 1)
+        hsizer_neighbor.Add(self.min_neighbor_distance, 1)
         vsizer_setup_2.Add(hsizer_neighbor, 1, wx.EXPAND | wx.ALL)
 
         vsizer_setup.Add(vsizer_setup_2, 1, wx.EXPAND | wx.ALL, 10)
 
         hsizer_core = wx.BoxSizer(wx.HORIZONTAL)
         core_txt = wx.StaticText(self, 0, "Keep core sectors")
-        rb_core_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
+        self.rb_core_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
         rb_core_no = wx.RadioButton(self, label="No")
         rb_core_no.SetValue(True)
 
         hsizer_core.Add(core_txt, 6)
-        hsizer_core.Add(rb_core_yes, 1)
+        hsizer_core.Add(self.rb_core_yes, 1)
         hsizer_core.Add(rb_core_no, 1)
         vsizer_setup.Add(hsizer_core, -1, wx.EXPAND | wx.ALL, 10)
 
         hsizer_center = wx.BoxSizer(wx.HORIZONTAL)
         center_txt = wx.StaticText(self, 0, "2-player: Do not allow hex 6 in centre")
-        rb_center_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
+        self.rb_center_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
         rb_center_no = wx.RadioButton(self, label="No")
         rb_center_no.SetValue(True)
 
         hsizer_center.Add(center_txt, 6)
-        hsizer_center.Add(rb_center_yes, 1)
+        hsizer_center.Add(self.rb_center_yes, 1)
         hsizer_center.Add(rb_center_no, 1)
         vsizer_setup.Add(hsizer_center, -1, wx.EXPAND | wx.ALL, 10)
 
         hsizer_small = wx.BoxSizer(wx.HORIZONTAL)
         small_txt = wx.StaticText(self, 0, "3-player: Smaller map")
-        rb_small_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
+        self.rb_small_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
         rb_small_no = wx.RadioButton(self, label="No")
         rb_small_no.SetValue(True)
 
         hsizer_small.Add(small_txt, 6)
-        hsizer_small.Add(rb_small_yes, 1)
+        hsizer_small.Add(self.rb_small_yes, 1)
         hsizer_small.Add(rb_small_no, 1)
         vsizer_setup.Add(hsizer_small, -1, wx.EXPAND | wx.ALL, 10)
 
@@ -134,44 +148,44 @@ class MainFrame(wx.Frame):
 
         hsizer_terra = wx.BoxSizer(wx.HORIZONTAL)
         terra_txt = wx.StaticText(self, 0, "Terra parameters [home, 1, 2, 3]:")
-        terra_home = wx.TextCtrl(self, value=str(1.0), size=(50, -1))  # TODO: set default
-        terra_1 = wx.TextCtrl(self, value=str(1.0), size=(50, -1))  # TODO: set default
-        terra_2 = wx.TextCtrl(self, value=str(0.1), size=(50, -1))  # TODO: set default
-        terra_3 = wx.TextCtrl(self, value=str(0.8), size=(50, -1))  # TODO: set default
+        self.terra_home = wx.TextCtrl(self, value=str(default_terra_param[0]), size=(50, -1))
+        self.terra_1 = wx.TextCtrl(self, value=str(default_terra_param[1]), size=(50, -1))
+        self.terra_2 = wx.TextCtrl(self, value=str(default_terra_param[2]), size=(50, -1))
+        self.terra_3 = wx.TextCtrl(self, value=str(default_terra_param[3]), size=(50, -1))
 
         hsizer_terra.Add(terra_txt, 1, wx.EXPAND | wx.ALL, 5)
-        hsizer_terra.Add(terra_home, -1)
-        hsizer_terra.Add(terra_1, -1)
-        hsizer_terra.Add(terra_2, -1)
-        hsizer_terra.Add(terra_3, -1)
+        hsizer_terra.Add(self.terra_home, -1)
+        hsizer_terra.Add(self.terra_1, -1)
+        hsizer_terra.Add(self.terra_2, -1)
+        hsizer_terra.Add(self.terra_3, -1)
         vsizer_neighbors.Add(hsizer_terra, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_gaia = wx.BoxSizer(wx.HORIZONTAL)
         gaia_txt = wx.StaticText(self, 0, "Gaia parameter:")
-        gaia_param = wx.TextCtrl(self, value=str(1.0))  # TODO: set default
+        self.gaia_param = wx.TextCtrl(self, value=str(default_gaia_param))
 
         hsizer_gaia.Add(gaia_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_gaia.Add(gaia_param, 1)
+        hsizer_gaia.Add(self.gaia_param, 1)
         vsizer_neighbors.Add(hsizer_gaia, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_trans = wx.BoxSizer(wx.HORIZONTAL)
         trans_txt = wx.StaticText(self, 0, "Trans dimentional parameter:")
-        trans_param = wx.TextCtrl(self, value=str(0.5))  # TODO: set default
+        self.trans_param = wx.TextCtrl(self, value=str(default_trans_param))
 
         hsizer_trans.Add(trans_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_trans.Add(trans_param, 1)
+        hsizer_trans.Add(self.trans_param, 1)
         vsizer_neighbors.Add(hsizer_trans, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_range = wx.BoxSizer(wx.HORIZONTAL)
         range_txt = wx.StaticText(self, 0, "Range parameters [1, 2, 3]:")
-        range_1 = wx.TextCtrl(self, value=str(1.0), size=(50, -1))  # TODO: set default
-        range_2 = wx.TextCtrl(self, value=str(0.6), size=(50, -1))  # TODO: set default
-        range_3 = wx.TextCtrl(self, value=str(0.005), size=(50, -1))  # TODO: set default
+        self.range_1 = wx.TextCtrl(self, value=str(default_range_factor[1]), size=(50, -1))
+        self.range_2 = wx.TextCtrl(self, value=str(default_range_factor[2]), size=(50, -1))
+        self.range_3 = wx.TextCtrl(self, value=str(default_range_factor[3]), size=(50, -1))
 
         hsizer_range.Add(range_txt, 1, wx.EXPAND | wx.ALL, 5)
-        hsizer_range.Add(range_1, -1)
-        hsizer_range.Add(range_2, -1)
-        hsizer_range.Add(range_3, -1)
+        hsizer_range.Add(self.range_1, -1)
+        hsizer_range.Add(self.range_2, -1)
+        hsizer_range.Add(self.range_3, -1)
         vsizer_neighbors.Add(hsizer_range, 1, wx.EXPAND | wx.ALL, 5)
 
         vsizer_setup.Add(vsizer_neighbors, 1, wx.EXPAND | wx.ALL, 5)
@@ -183,26 +197,26 @@ class MainFrame(wx.Frame):
 
         hsizer_nearness = wx.BoxSizer(wx.HORIZONTAL)
         nearness_txt = wx.StaticText(self, 0, "Nearness weight:")
-        nearness_param = wx.TextCtrl(self, value=str(0.5))  # TODO: set default
+        self.nearness_param = wx.TextCtrl(self, value=str(default_nearness_param))
 
         hsizer_nearness.Add(nearness_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_nearness.Add(nearness_param, 1)
+        hsizer_nearness.Add(self.nearness_param, 1)
         vsizer_distribution.Add(hsizer_nearness, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_density = wx.BoxSizer(wx.HORIZONTAL)
         density_txt = wx.StaticText(self, 0, "Planet Density Dropoff Scale:")
-        density_param = wx.TextCtrl(self, value=str(0.5))  # TODO: set default
+        self.density_param = wx.TextCtrl(self, value=str(default_density_param))
 
         hsizer_density.Add(density_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_density.Add(density_param, 1)
+        hsizer_density.Add(self.density_param, 1)
         vsizer_distribution.Add(hsizer_density, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_ratio = wx.BoxSizer(wx.HORIZONTAL)
         ratio_txt = wx.StaticText(self, 0, "Type Ratio Dropoff Scale:")
-        ratio_param = wx.TextCtrl(self, value=str(0.5))  # TODO: set default
+        self.ratio_param = wx.TextCtrl(self, value=str(default_ratio_param))
 
         hsizer_ratio.Add(ratio_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_ratio.Add(ratio_param, 1)
+        hsizer_ratio.Add(self.ratio_param, 1)
         vsizer_distribution.Add(hsizer_ratio, 1, wx.EXPAND | wx.ALL, 5)
 
         vsizer_setup.Add(vsizer_distribution, 1, wx.EXPAND | wx.ALL, 5)
@@ -241,7 +255,7 @@ class MainFrame(wx.Frame):
             - range_factor: value of planet based on distance (radius)
         
         Parameters - Distribution method:
-            - Nearness weight (0-1): planet density vs planet type TODO: what is 1.0
+            - Nearness weight (0-1): planet density (1.0) vs planet type (0.0)
             - Planet Density Dropoff Scale (0-inf): Ideal density priority
             - Type Ratio Dropoff Scale (0-inf): Ideal planet distribution priority        
         
@@ -259,15 +273,52 @@ class MainFrame(wx.Frame):
         self.Show()
 
     def on_randomize(self, event):
-        n_players = int(self.players_number.GetValue())
+        n_players = int(self.num_players.GetValue())
         random_setup = RandomSetup(self, n_players)
         random_setup.Show(True)
 
     def on_make_map(self, event):
-        n_players = int(self.players_number.GetValue())
+        n_players = int(self.num_players.GetValue())
+        map = Map(n_players)
 
-        map = MapGenerator(self, n_players)
-        map.Show(True)
+        method = self.method_box.GetSelection()
+        num_iteration = int(self.num_iterations.GetValue())
+        radius = int(self.radius.GetValue())
+        cluster_size = int(self.cluster_size.GetValue())
+        min_neighbor_distance = int(self.min_neighbor_distance.GetValue())
+        keep_core = ("Yes" if self.rb_core_yes.GetValue() else "No")
+        allow_six_in_centre = ("Yes" if self.rb_center_yes.GetValue() else "No")
+        small_map = ("Yes" if self.rb_small_yes.GetValue() else "No")
+
+        terra_param = [float(self.terra_home.GetValue()), float(self.terra_1.GetValue()),
+                       float(self.terra_2.GetValue()), float(self.terra_3.GetValue())]
+        gaia_param = float(self.gaia_param.GetValue())
+        trans_param = float(self.trans_param.GetValue())
+        range_factor = [1.0, float(self.range_1.GetValue()),
+                        float(self.range_2.GetValue()), float(self.range_3.GetValue())]
+        nearness_param = float(self.nearness_param.GetValue())
+        density_param = float(self.density_param.GetValue())
+        ratio_param = float(self.ratio_param.GetValue())
+
+        map.set_method(method)
+        map.set_try_count(num_iteration)
+        map.set_search_radius(radius)
+        map.set_max_cluster_size(cluster_size)
+        map.set_minimum_equal_range(min_neighbor_distance)
+
+        if method == 0:
+            map.set_method_0_params(terra_param, gaia_param, trans_param, range_factor)
+        elif method == 1:
+            map.set_method_1_params(nearness_param, density_param, ratio_param)
+
+        map.balance_map()
+        map.set_to_balanced_map()
+
+        #map.set_image_name("test_map")
+
+
+        map_setup = MapSetup(self, map)
+        map_setup.Show(True)
 
     def make_menu(self):
         pass
@@ -278,17 +329,18 @@ class MainFrame(wx.Frame):
     def get_default_num_players(self):
         return self.default_num_players
 
-class MapGenerator(wx.Frame):
-    def __init__(self, parent, num_players, image_path=default_map_path):
-        super(MapGenerator, self).__init__(parent, title="Map Generator", size=(1050, 850))
-        num_players = num_players
+class MapSetup(wx.Frame):
+    def __init__(self, parent, map, image_path=default_map_path):
+        super(MapSetup, self).__init__(parent, title="Map Generator", size=(1050, 850))
+
+        ico = wx.Icon('images/hexagon_icon.ico', wx.BITMAP_TYPE_ICO)
+        self.SetIcon(ico)
 
         PhotoMaxHeight = 800
         self.SetBackgroundColour(wx.WHITE)
 
-        map = Map(num_players)
-        # optimize
         map.save_image_map()
+        # TODO: add save function to popup window with map
 
         img = wx.Image(image_path, wx.BITMAP_TYPE_ANY)
         W = img.GetWidth()
@@ -312,6 +364,9 @@ class RandomSetup(wx.Frame):
     def __init__(self, parent, num_players):
         super(RandomSetup, self).__init__(parent, title="Random setup", size=(1200, 950))
         resize_factor = 0.8
+
+        ico = wx.Icon('images/tech_icon.ico', wx.BITMAP_TYPE_ICO)
+        self.SetIcon(ico)
 
         hsizer_output = wx.BoxSizer(wx.HORIZONTAL)
         vsizer_overall = wx.BoxSizer(wx.VERTICAL)
@@ -367,7 +422,8 @@ class RandomSetup(wx.Frame):
                 hsizer.Add(brown_vsizer1, 1, wx.ALL)
                 hsizer.Add(brown_vsizer2, 1, wx.ALL)
 
-                hsizer_tech_tracks.Add(hsizer, 1, wx.EXPAND | wx.ALL)
+                hsizer_tech_tracks.Add(hsizer, 1, wx.EXPAND | wx.ALL, 0)
+                hsizer_tech_tracks.AddSpacer(20)
 
             else: # all other tracks
                 vsizer = wx.BoxSizer(wx.VERTICAL)
