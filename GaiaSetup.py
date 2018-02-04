@@ -2,6 +2,7 @@ import wx
 import wx.grid
 import random
 from Gaia import Map
+import copy
 
 demo_map_path = "images/MapDemo.png"
 default_map_path = "images/Gaia_map.png"
@@ -62,7 +63,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.on_randomize, btn_randomize)
         self.progress = wx.StaticText(self, 0, str("Map progress: 0%"))
         self.balance = wx.StaticText(self, 0, str(""))
-        self.btn_abort = wx.Button(self, wx.ID_ABORT, label="Abort", size=(80, 40))
+        self.btn_abort = wx.Button(self, wx.ID_ABORT, label="Stop", size=(80, 40))
         self.Bind(wx.EVT_BUTTON, self.on_abort, self.btn_abort)
 
         self.enable_abort_btn(False)
@@ -139,7 +140,7 @@ class MainFrame(wx.Frame):
         vsizer_setup.Add(hsizer_core, -1, wx.EXPAND | wx.ALL, 10)
 
         hsizer_center = wx.BoxSizer(wx.HORIZONTAL)
-        center_txt = wx.StaticText(self, 0, "2-player: Do not allow hex 6 in centre")
+        center_txt = wx.StaticText(self, 0, "2-player: Disable hex 6 in centre")
         self.rb_center_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
         rb_center_no = wx.RadioButton(self, label="No")
         rb_center_no.SetValue(True)
@@ -291,8 +292,6 @@ class MainFrame(wx.Frame):
         self.Centre()
         self.Show()
 
-        self.on_error("Test")
-
     def on_randomize(self, event):
         n_players = int(self.num_players.GetValue())
         random_setup = RandomSetup(self, n_players)
@@ -300,16 +299,53 @@ class MainFrame(wx.Frame):
 
     def on_make_map(self, event):
         n_players = int(self.num_players.GetValue())
-        map = Map(n_players)
+        if n_players < 2 or n_players > 4:
+            self.num_players.SetValue(str(default_num_players))
+            self.on_error("Number of players must be 2, 3 or 4")
+            return
+
+        keep_core = (True if self.rb_core_yes.GetValue() else False)
+        disable_six_in_centre = (True if self.rb_center_yes.GetValue() else False)
+        smaller_map = (True if self.rb_small_yes.GetValue() else False)
+
+        if disable_six_in_centre:
+            if n_players == 2:
+                disable_six_in_centre = True
+            else:
+                disable_six_in_centre = False
+
+        if smaller_map:
+            if n_players == 3:
+                smaller_map = True
+            else:
+                smaller_map = False
+
+        map = Map(n_players, True, keep_core, disable_six_in_centre, smaller_map)
 
         method = self.method_box.GetSelection()
         num_iteration = int(self.num_iterations.GetValue())
+        if num_iteration < 100:
+            self.num_iterations.SetValue(str(default_num_iterations))
+            self.on_error("Number of iterations has to be more than 100.")
+            return
+
         radius = int(self.radius.GetValue())
+        if radius < 1 or radius > 3:
+            self.radius.SetValue(str(default_radius))
+            self.on_error("Radius must be between 1 and 3")
+            return
+
         cluster_size = int(self.cluster_size.GetValue())
+        if cluster_size < 3:
+            self.cluster_size.SetValue(str(default_cluster_size))
+            self.on_error("Maximum cluster size must be greater than 2")
+            return
+
         min_neighbor_distance = int(self.min_neighbor_distance.GetValue())
-        keep_core = (True if self.rb_core_yes.GetValue() else False)
-        allow_six_in_centre = (True if self.rb_center_yes.GetValue() else False)
-        smaller_map = (True if self.rb_small_yes.GetValue() else False)
+        if min_neighbor_distance > 4:
+            self.min_neighbor_distance.SetValue(default_min_neighbor_distance)
+            self.on_error("Minimum distance between planets of equal color can not be greater than 4")
+            return
 
         terra_param = [float(self.terra_home.GetValue()), float(self.terra_1.GetValue()),
                        float(self.terra_2.GetValue()), float(self.terra_3.GetValue())]
@@ -317,9 +353,34 @@ class MainFrame(wx.Frame):
         trans_param = float(self.trans_param.GetValue())
         range_factor = [1.0, float(self.range_1.GetValue()),
                         float(self.range_2.GetValue()), float(self.range_3.GetValue())]
+
+        neighbor_params = copy.deepcopy(terra_param)
+        neighbor_params.append(gaia_param)
+        neighbor_params.append(trans_param)
+        neighbor_params.extend(range_factor)
+
+        for param in neighbor_params:
+            if param > 1 or param < 0:
+                self.on_error("All parameters within the Neighbor Method must be between 0 and 1")
+                return
+
         nearness_param = float(self.nearness_param.GetValue())
+
+        if nearness_param < 0 or nearness_param > 1:
+            self.on_error("Nearness weight must be between 0 and 1")
+            return
+
         density_param = float(self.density_param.GetValue())
+
+        if density_param < 0:
+            self.on_error("Planet Density Dropoff Scale must be greater than 0")
+            return
+
         ratio_param = float(self.ratio_param.GetValue())
+
+        if ratio_param < 0:
+            self.on_error("Type Ratio Dropoff Scale must be greater than 0")
+            return
 
         map.set_method(method)
         map.set_try_count(num_iteration)
@@ -343,7 +404,7 @@ class MainFrame(wx.Frame):
         map_setup = MapSetup(self, map)
         map_setup.Show(True)
 
-        self.set_progress(0)
+        self.set_progress(0, 0)
         self.abort = False
 
     def make_menu(self):
@@ -569,19 +630,38 @@ class RandomSetup(wx.Frame):
         self.Show()
 
 class PopupWindow(wx.PopupWindow):
-    def __init__(self, parent, message, header = None, size=(500, 300)):
+    def __init__(self, parent, message, header_txt = None, size=(500, 300)):
         wx.PopupWindow.__init__(self, parent, wx.SIMPLE_BORDER)
-        self.SetSize(size)
-
-        if header:
-            header = wx.StaticText(self, 1, header)
-
-
 
         default_font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
         self.SetFont(default_font)
 
-        text = wx.StaticText(self, 1, message)
+        self.SetSize(size)
+        width = size[0]
+        height = size[1]
+
+        if header_txt:
+            header_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
+            header = wx.TextCtrl(self, -1, header_txt, pos=(20, 20), style=wx.TE_READONLY | wx.BORDER_NONE)
+            header.SetFont(header_font)
+
+            text = wx.TextCtrl(self, -1, message, size=(width - 40, height - 110), pos=(20, 50),
+                               style=wx.TE_READONLY | wx.TE_MULTILINE | wx.BORDER_NONE)
+        else:
+            text = wx.TextCtrl(self, -1, message, size=(width - 40, height - 80), pos=(20, 20),
+                               style=wx.TE_READONLY | wx.TE_MULTILINE | wx.BORDER_NONE)
+
+        text.SetBackgroundColour("#f0f0f0")
+
+        close_btn = wx.Button(self, wx.ID_CLOSE, label="Close", pos=(width - 120, height - 60), size=(100, 40))
+        self.Bind(wx.EVT_BUTTON, self.on_close, close_btn)
+
+        self.CenterOnParent(dir=wx.BOTH)
+        self.Show()
+
+    def on_close(self, event):
+        self.Destroy()
+
 
 
 
