@@ -494,7 +494,7 @@ def calc_map_happiness(hex_map, NW=0.5, PD_SC=30.0, TR_SC=5.0, radius=3):
 
 
 class Map(object):
-    def __init__(self, num_players, random="Yes", keep_core_sectors="No", enable_6_as_centre_in_2p="Yes"):
+    def __init__(self, num_players, random=True, keep_core_sectors=False, disable_6_as_centre_in_2p=False, use_323_layout=False):
         """
         2-player: 2-3-2, hex 1, 2, 3, 4, 5_,6_,7_ (option: 6_ not in centre)
         3- and 4-player: 3-4-3, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
@@ -510,7 +510,8 @@ class Map(object):
         self.width = 23
         self.height = 30
         self.keep_core_sectors = keep_core_sectors
-        self.eneble_6_as_centre_in_2p = enable_6_as_centre_in_2p
+        self.disable_6_as_centre_in_2p = disable_6_as_centre_in_2p
+        self.use_323_layout = use_323_layout
         self.max_rejected_rotations = 1000000
 
         self.image_location = "images/"
@@ -568,11 +569,10 @@ class Map(object):
             print "Setting up 2-3-2 map for 2 players"
             self.map = [["A", "B"], ["C", "D", "E"], ["F", "G"]]
             self.centre = [[(6, 6), (11, 7)], [(3, 13), (8, 14), (13, 15)], [(5, 21), (10, 22)]]
-            if self.random == "Yes":
-                if self.keep_core_sectors == "No":
+            if self.random:
+                if self.keep_core_sectors:
                     random.shuffle(Small)
-                    if self.eneble_6_as_centre_in_2p == "No" and Small[3] == "6_":
-                        print "Steinar er best!"
+                    if self.disable_6_as_centre_in_2p and Small[3] == "6_":
                         centre = Small[0]
                         Small[0] = Small[3]
                         Small[3] = centre
@@ -580,7 +580,6 @@ class Map(object):
                     reminding_sectors = ["5_", "6_", "7_"]
                     random.shuffle(reminding_sectors)
                     reminding_on_the_right = random.randint(0, 1)
-                    print "0 or 1 was: ", reminding_on_the_right
                     if reminding_on_the_right == 1:
                         Small[1] = reminding_sectors[0]
                         Small[4] = reminding_sectors[1]
@@ -596,13 +595,13 @@ class Map(object):
                         Small[5] = reminding_sectors[2]
 
             self.content = Small
-        elif self.num_players == 3:
+        elif self.use_323_layout:
             print "Setting up 3-2-3 map for 3 players"
             self.map = [["A", "B", "C"], ["D", "E"], ["F", "G", "H"]]
             self.centre = [[(6, 6), (11, 7), (16, 8)], [(8, 14), (13, 15)],
                            [(5, 21), (10, 22), (15, 23)]]
-            if self.random == "Yes":
-                if self.keep_core_sectors == "No":
+            if self.random:
+                if self.keep_core_sectors:
                     random.shuffle(Medium)
                 else:
                     reminding_sectors = ["5", "6", "7", "8", "9", "10"]
@@ -613,12 +612,12 @@ class Map(object):
                     Medium[7] = reminding_sectors[3]
             self.content = Medium
         else:
-            print "Setting up 3-4-3 map for 4 players"
+            print "Setting up 3-4-3 map for 3/4 players"
             self.map = [["A", "B", "C"], ["D", "E", "F", "G"], ["H", "I", "J"]]
             self.centre = [[(6, 6), (11, 7), (16, 8)], [(3, 13), (8, 14), (13, 15), (18, 16)],
                            [(5, 21), (10, 22), (15, 23)]]
-            if self.random == "Yes":
-                if self.keep_core_sectors == "No":
+            if self.random:
+                if self.keep_core_sectors:
                     random.shuffle(Large)
                 else:
                     reminding_sectors = ["5", "6", "7", "8", "9", "10"]
@@ -703,7 +702,7 @@ class Map(object):
 
 
         map_image_width = int(self.sector_image_width * max_row_width * 4.82 / 5.0)
-        if self.num_players == 3:
+        if self.use_323_layout:
             map_image_width = int(self.sector_image_width * max_row_width * 1.04)
         map_image_height = int(self.sector_image_height * 2.8)
 
@@ -719,7 +718,7 @@ class Map(object):
         v_offsets = [0, 0, int(self.sector_image_height * 0.1)]
         h_offsets = [sector_start_horizontal, 0, sector_start_horizontal - int(self.sector_image_width * 0.18)]
 
-        if self.num_players == 3:
+        if self.use_323_layout:
             h_offsets = [self.sector_image_width * 0.18,
                          sector_start_horizontal,
                          0.0]
@@ -755,7 +754,7 @@ class Map(object):
         while do_rotate == 1 and n_iter < self.max_rejected_rotations:
             for row in self.map:
                 for sector in row:
-                    if self.keep_core_sectors == "Yes" and sector.get_id() in core_sectors:
+                    if self.keep_core_sectors and sector.get_id() in core_sectors:
                         continue
                     n_rot = random.randint(0, 5)
                     sector.rotate_sector(n_rot)
@@ -881,14 +880,14 @@ class Map(object):
         elif self.method in bigger_is_better:
             return balance > self.best_balance
 
-    def balance_map(self, print_progress_func=None, break_receive_func=None):
+    def balance_map(self, print_progress_func=None, break_received_func=None):
         self.reset_best_map_value()
         self.best_map_data = self.get_printable_map_data()
         progress = 1
         for try_no in range(self.try_count):
-            if break_receive_func is not None:
-                do_break = break_receive_func()
-                if do_break == "Yes":
+            if break_received_func is not None:
+                do_break = break_received_func()
+                if do_break:
                     if print_progress_func is not None:
                         print_progress_func(100)
                     break;
@@ -1022,7 +1021,7 @@ def print_progress(progress):
     print "progress = ", progress
 
 if __name__ == "__main__":
-    test_map = Map(4, "Yes", "No", "Yes")
+    test_map = Map(4, True, False, True, True)
     test_map.set_method(0)
     test_map.set_debug_level(0)
     test_map.set_try_count(1000)
