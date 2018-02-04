@@ -889,19 +889,17 @@ class Map(object):
                 do_break = break_received_func()
                 if do_break:
                     if print_progress_func is not None:
-                        print_progress_func(100)
+                        print_progress_func(100, self.best_balance)
                     break;
             self.rotate_map_randomly()
-            if try_no % (self.try_count/100) == 0:
-                progress += 1
-                if print_progress_func is not None:
-                    print_progress_func(progress)
-                #print "progress = ", progress, " try_no = ", try_no, "try_count/100 = ", self.try_count/100, "try_no % (self.try_count/100) = ", try_no % (self.try_count/100)
             balance = self.calculate_balance()
             if self.is_better_balance(balance):
                 self.best_balance = balance
                 self.best_map_data = self.get_printable_map_data()
-        print "balance finished!"
+            if try_no % (self.try_count / 100) == 0:
+                progress += 1
+                if print_progress_func is not None:
+                    print_progress_func(progress, self.best_balance)
 
     def get_best_map_data(self):
         return self.best_map_data
