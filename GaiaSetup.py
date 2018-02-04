@@ -43,7 +43,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self.SetFont(self.default_font)
 
-        self.abort = "No"
+        self.abort = False
         self.SetBackgroundColour(wx.WHITE)
 
         ico = wx.Icon('images/gaia_icon.ico', wx.BITMAP_TYPE_ICO)
@@ -285,6 +285,8 @@ class MainFrame(wx.Frame):
         self.Centre()
         self.Show()
 
+        self.on_error("Test")
+
     def on_randomize(self, event):
         n_players = int(self.num_players.GetValue())
         random_setup = RandomSetup(self, n_players)
@@ -299,9 +301,9 @@ class MainFrame(wx.Frame):
         radius = int(self.radius.GetValue())
         cluster_size = int(self.cluster_size.GetValue())
         min_neighbor_distance = int(self.min_neighbor_distance.GetValue())
-        keep_core = ("Yes" if self.rb_core_yes.GetValue() else "No")
-        allow_six_in_centre = ("Yes" if self.rb_center_yes.GetValue() else "No")
-        small_map = ("Yes" if self.rb_small_yes.GetValue() else "No")
+        keep_core = (True if self.rb_core_yes.GetValue() else False)
+        allow_six_in_centre = (True if self.rb_center_yes.GetValue() else False)
+        smaller_map = (True if self.rb_small_yes.GetValue() else False)
 
         terra_param = [float(self.terra_home.GetValue()), float(self.terra_1.GetValue()),
                        float(self.terra_2.GetValue()), float(self.terra_3.GetValue())]
@@ -332,7 +334,7 @@ class MainFrame(wx.Frame):
         map_setup.Show(True)
 
         self.set_progress(0)
-        self.abort = "No"
+        self.abort = False
 
     def make_menu(self):
         pass
@@ -355,7 +357,6 @@ class MainFrame(wx.Frame):
 
     def enable_abort_btn(self, boolean):
         if boolean:
-            print "RED!"
             self.btn_abort.SetBackgroundColour(wx.RED)
             self.btn_abort.Enable()
         else:
@@ -367,7 +368,10 @@ class MainFrame(wx.Frame):
         return self.abort
 
     def on_abort(self, event=None):
-        self.abort = "Yes"
+        self.abort = True
+
+    def on_error(self, error_message):
+        PopupWindow(self, error_message, "WARNING", (300, 200))
 
 class MapSetup(wx.Frame):
     def __init__(self, parent, map, image_path=default_map_path):
@@ -550,6 +554,22 @@ class RandomSetup(wx.Frame):
 
         self.Centre()
         self.Show()
+
+class PopupWindow(wx.PopupWindow):
+    def __init__(self, parent, message, header = None, size=(500, 300)):
+        wx.PopupWindow.__init__(self, parent, wx.SIMPLE_BORDER)
+        self.SetSize(size)
+
+        if header:
+            pass
+
+        default_font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+        self.SetFont(default_font)
+
+        text = wx.StaticText(self, 1, message)
+
+
+
 
 if __name__ == "__main__":
     app = wx.App()
