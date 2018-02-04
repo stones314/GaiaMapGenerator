@@ -887,10 +887,10 @@ class Map(object):
         progress = 1
         for try_no in range(self.try_count):
             if break_receive_func is not None:
-                do_break = break_receive_func();
+                do_break = break_receive_func()
                 if do_break == "Yes":
                     if print_progress_func is not None:
-                        print_progress_func(0)
+                        print_progress_func(100)
                     break;
             self.rotate_map_randomly()
             if try_no % (self.try_count/100) == 0:
