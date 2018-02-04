@@ -494,7 +494,7 @@ def calc_map_happiness(hex_map, NW=0.5, PD_SC=30.0, TR_SC=5.0, radius=3):
 
 
 class Map(object):
-    def __init__(self, num_players, random="Yes", keep_core_sectors="No"):
+    def __init__(self, num_players, random="Yes", keep_core_sectors="No", enable_6_as_centre_in_2p="Yes"):
         """
         2-player: 2-3-2, hex 1, 2, 3, 4, 5_,6_,7_ (option: 6_ not in centre)
         3- and 4-player: 3-4-3, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
@@ -510,14 +510,16 @@ class Map(object):
         self.width = 23
         self.height = 30
         self.keep_core_sectors = keep_core_sectors
+        self.eneble_6_as_centre_in_2p = enable_6_as_centre_in_2p
+        self.max_rejected_rotations = 1000000
 
         self.image_location = "images/"
         self.image_name = "Gaia_map"
         self.image_format = ".png"
 
         self.map_picture = None
-        self.image_width = 1884
-        self.image_height = 2042
+        self.sector_image_width = 1884
+        self.sector_image_height = 2042
 
         self.convert = {"Em": Empty, "Tr": Fancy_planet, "Ga": Fancy_planet,
                         "Br": Planet, "Bl": Planet, "Bk": Planet,
@@ -557,30 +559,61 @@ class Map(object):
 
     def set_map(self):
         Small = ["1", "5_", "2", "3", "6_", "4", "7_"]
+        Medium = ["7", "1", "5", "2", "3", "8", "4", "6", "9", "10"]
         Large = ["10", "1", "5", "9", "2", "3", "6", "8", "4", "7"]
         index = 0
         # default_sector_rotation = 0
 
         if self.num_players == 2:
+            print "Setting up 2-3-2 map for 2 players"
             self.map = [["A", "B"], ["C", "D", "E"], ["F", "G"]]
             self.centre = [[(6, 6), (11, 7)], [(3, 13), (8, 14), (13, 15)], [(5, 21), (10, 22)]]
             if self.random == "Yes":
                 if self.keep_core_sectors == "No":
                     random.shuffle(Small)
-                    #Commented out: in person we dont want hex 6 to be centre tile. For now we will let it be possible
-                    #for the map gen. TODO: maybe make it an input parameter?
-                    #if Small[3] == "6_":
-                    #    centre = Small[0]
-                    #    Small[0] = Small[3]
-                    #    Small[3] = centre
+                    if self.eneble_6_as_centre_in_2p == "No" and Small[3] == "6_":
+                        print "Steinar er best!"
+                        centre = Small[0]
+                        Small[0] = Small[3]
+                        Small[3] = centre
                 else:
                     reminding_sectors = ["5_", "6_", "7_"]
                     random.shuffle(reminding_sectors)
-                    Small[1] = reminding_sectors[0]
-                    Small[4] = reminding_sectors[1]
-                    Small[6] = reminding_sectors[2]
+                    reminding_on_the_right = random.randint(0, 1)
+                    print "0 or 1 was: ", reminding_on_the_right
+                    if reminding_on_the_right == 1:
+                        Small[1] = reminding_sectors[0]
+                        Small[4] = reminding_sectors[1]
+                        Small[6] = reminding_sectors[2]
+                    else:
+                        #shift core sectors to the right
+                        Small[1] = Small[0]
+                        Small[4] = Small[3]
+                        Small[3] = Small[2]
+                        Small[6] = Small[5]
+                        Small[0] = reminding_sectors[0]
+                        Small[2] = reminding_sectors[1]
+                        Small[5] = reminding_sectors[2]
+
             self.content = Small
+        elif self.num_players == 3:
+            print "Setting up 3-2-3 map for 3 players"
+            self.map = [["A", "B", "C"], ["D", "E"], ["F", "G", "H"]]
+            self.centre = [[(6, 6), (11, 7), (16, 8)], [(8, 14), (13, 15)],
+                           [(5, 21), (10, 22), (15, 23)]]
+            if self.random == "Yes":
+                if self.keep_core_sectors == "No":
+                    random.shuffle(Medium)
+                else:
+                    reminding_sectors = ["5", "6", "7", "8", "9", "10"]
+                    random.shuffle(reminding_sectors)
+                    Medium[0] = reminding_sectors[0]
+                    Medium[2] = reminding_sectors[1]
+                    Medium[5] = reminding_sectors[2]
+                    Medium[7] = reminding_sectors[3]
+            self.content = Medium
         else:
+            print "Setting up 3-4-3 map for 4 players"
             self.map = [["A", "B", "C"], ["D", "E", "F", "G"], ["H", "I", "J"]]
             self.centre = [[(6, 6), (11, 7), (16, 8)], [(3, 13), (8, 14), (13, 15), (18, 16)],
                            [(5, 21), (10, 22), (15, 23)]]
@@ -660,27 +693,45 @@ class Map(object):
         sector list = [(sector, rotation)]
         """
         sector_list = self.get_printable_map_data()
+        print sector_list
 
-        map_width = int(self.image_width * len(sector_list[1]) * 0.96)
-        map_height = int(self.image_height * 2.8)
 
-        self.map_picture = Image.new("RGB", (map_width, map_height), (255, 255, 255))
+        max_row_width = len(sector_list[0])
+        for i in range(1,3):
+            if len(sector_list[i]) > max_row_width:
+                max_row_width = len(sector_list[i])
 
-        height_adjustment = int(self.image_height * 0.1)
+
+        map_image_width = int(self.sector_image_width * max_row_width * 4.82 / 5.0)
+        if self.num_players == 3:
+            map_image_width = int(self.sector_image_width * max_row_width * 1.04)
+        map_image_height = int(self.sector_image_height * 2.8)
+
+        self.map_picture = Image.new("RGB", (map_image_width, map_image_height), (255, 255, 255))
+
+        height_adjustment = int(self.sector_image_height * 0.1)
         v_scale = 0.71
         h_scale = 0.945
 
-        sector_start_horizontal = int(self.image_width * 0.56)
+        sector_start_horizontal = int(self.sector_image_width * 0.56)
         sector_start_vertical = 0
 
-        v_offsets = [0, 0, int(self.image_height * 0.1)]
-        h_offsets = [sector_start_horizontal, 0, sector_start_horizontal - int(self.image_width * 0.18)]
+        v_offsets = [0, 0, int(self.sector_image_height * 0.1)]
+        h_offsets = [sector_start_horizontal, 0, sector_start_horizontal - int(self.sector_image_width * 0.18)]
+
+        if self.num_players == 3:
+            h_offsets = [self.sector_image_width * 0.18,
+                         sector_start_horizontal,
+                         0.0]
+            v_offsets = [0,
+                         int(self.sector_image_height * 0.1),
+                         int(self.sector_image_height * 0.1)]
 
         for j, row in enumerate(sector_list):
             for i, (sector_number, sector_rotation) in enumerate(row):
                 filename = self.image_location + sector_number + self.image_format
-                hor = h_offsets[j] + int(self.image_width * h_scale * i)
-                ver = v_offsets[j] + (int(self.image_height * v_scale * j)) + sector_start_vertical + height_adjustment * i
+                hor = int(h_offsets[j]) + int(self.sector_image_width * h_scale * i)
+                ver = int(v_offsets[j]) + (int(self.sector_image_height * v_scale * j)) + int(sector_start_vertical + height_adjustment * i)
                 image = Image.open(filename)
                 image = image.rotate(-sector_rotation)
                 self.map_picture.paste(image, (hor, ver), image)
@@ -701,7 +752,7 @@ class Map(object):
         do_rotate = 1
         n_iter = 0
         core_sectors = ["1", "2", "3", "4"]
-        while do_rotate == 1:
+        while do_rotate == 1 and n_iter < self.max_rejected_rotations:
             for row in self.map:
                 for sector in row:
                     if self.keep_core_sectors == "Yes" and sector.get_id() in core_sectors:
@@ -809,31 +860,43 @@ class Map(object):
                 print cluster_sizes
                 print stats
             return avg_size
+        if self.method == 3:
+            '''Optimize for bigger largest cluster'''
+            cluster_sizes = get_cluster_size_list(self.full_map)
+            stats = get_stats(cluster_sizes)
+            largest_size = stats[3]
+            if print_happiness != 0:
+                print cluster_sizes
+                print stats
+            return largest_size
 
     def is_better_balance(self, balance):
         '''
         For the various optimization methods this tells if bigger or smaller is better
         '''
         smaller_is_better = [0]
-        bigger_is_better = [1, 2]
+        bigger_is_better = [1, 2, 3]
         if self.method in smaller_is_better:
             return balance < self.best_balance
         elif self.method in bigger_is_better:
             return balance > self.best_balance
 
-    def balance_map(self):
+    def balance_map(self, print_progress_func=None):
         self.reset_best_map_value()
         self.best_map_data = self.get_printable_map_data()
         progress = 0
-        for i in range(self.try_count):
-            #if self.try_count%(self.try_count/10) == 0:
-            #    print "progress = " + str(progress)
-            #    progress += 10
+        for try_no in range(self.try_count):
             self.rotate_map_randomly()
+            if try_no % (self.try_count/100) == 0:
+                progress += 1
+                if print_progress_func is not None:
+                    print_progress_func(progress)
+                #print "progress = ", progress, " try_no = ", try_no, "try_count/100 = ", self.try_count/100, "try_no % (self.try_count/100) = ", try_no % (self.try_count/100)
             balance = self.calculate_balance()
             if self.is_better_balance(balance):
                 self.best_balance = balance
                 self.best_map_data = self.get_printable_map_data()
+        print "balance finished!"
 
     def get_best_map_data(self):
         return self.best_map_data
@@ -949,16 +1012,17 @@ class Planet(Hexagon):
 
         return score
 
-
+def print_progress(progress):
+    print "progress = ", progress
 
 if __name__ == "__main__":
-    test_map = Map(4, "Yes", "No")
+    test_map = Map(4, "Yes", "No", "Yes")
     test_map.set_method(0)
-    test_map.set_debug_level(1)
-    test_map.set_try_count(1)
+    test_map.set_debug_level(0)
+    test_map.set_try_count(1000)
     test_map.set_search_radius(2)
-    test_map.set_max_cluster_size(4)
-    test_map.set_minimum_equal_range(3)
+    test_map.set_max_cluster_size(5)
+    test_map.set_minimum_equal_range(2)
 
     #method 0 params:
     terra_param = [1.0, 1.0, 0.1, 0.8]
@@ -982,12 +1046,13 @@ if __name__ == "__main__":
                 test_map.set_image_name("map" + str(i))
             test_map.save_image_map()
     elif do_loop == 2:
-        test_map.balance_map()
+        test_map.balance_map(print_progress)
         test_map.set_to_balanced_map()
         test_map.calculate_balance(1)
-        print "Saving image...\n"
-        test_map.set_image_name("test_map")
-        test_map.save_image_map()
+        #print "Saving image...\n"
+        #test_map.set_image_name("test_map")
+        #test_map.save_image_map()
+        test_map.show_image_map()
     else:
         test_map.calculate_balance(1)
 
