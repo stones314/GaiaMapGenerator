@@ -881,11 +881,17 @@ class Map(object):
         elif self.method in bigger_is_better:
             return balance > self.best_balance
 
-    def balance_map(self, print_progress_func=None):
+    def balance_map(self, print_progress_func=None, break_receive_func=None):
         self.reset_best_map_value()
         self.best_map_data = self.get_printable_map_data()
         progress = 1
         for try_no in range(self.try_count):
+            if break_receive_func is not None:
+                do_break = break_receive_func();
+                if do_break == "Yes":
+                    if print_progress_func is not None:
+                        print_progress_func(0)
+                    break;
             self.rotate_map_randomly()
             if try_no % (self.try_count/100) == 0:
                 progress += 1
