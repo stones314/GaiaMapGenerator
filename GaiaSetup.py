@@ -19,6 +19,12 @@ FED = ['FEDknw', 'FEDore', 'FEDcre', 'FEDqic', 'FEDpwt']
 
 list_of_pieces = [FED[:], ADV[:], TEC[:], TEC[:], BOO[:], RND[:], FIN[:]]
 
+default_num_players = 2
+default_num_iterations = 1000
+default_radius = 2
+default_cluster_size = 4
+default_min_neighbor_distance = 2
+
 default_terra_param = [1.0, 1.0, 0.1, 0.8]
 default_gaia_param = 1.0
 default_trans_param = 0.5
@@ -37,30 +43,37 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self.SetFont(self.default_font)
 
-        self.default_num_players = 2
+        self.abort = "No"
         self.SetBackgroundColour(wx.WHITE)
 
         ico = wx.Icon('images/gaia_icon.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(ico)
 
         vsizer = wx.BoxSizer(wx.VERTICAL)
-
         hsizer_main = wx.BoxSizer(wx.HORIZONTAL)
         vsizer_player_info = wx.BoxSizer(wx.VERTICAL)
 
         players_info_text = wx.StaticText(self, -1, "Number of players")
-        self.num_players = wx.TextCtrl(self, value=str(self.default_num_players))
+        self.num_players = wx.TextCtrl(self, value=str(default_num_players))
         btn_make_map = wx.Button(self, wx.ID_ADD, label="Generate map", size=(120, 40))
         self.Bind(wx.EVT_BUTTON, self.on_make_map, btn_make_map)
         btn_randomize = wx.Button(self, wx.ID_PAGE_SETUP, label="Randomize setup", size=(140, 40))
         self.Bind(wx.EVT_BUTTON, self.on_randomize, btn_randomize)
+        self.progress = wx.StaticText(self, 0, str("Map progress: 0%"))
+        self.btn_abort = wx.Button(self, wx.ID_ABORT, label="Abort", size=(80, 40))
+        self.Bind(wx.EVT_BUTTON, self.on_abort, self.btn_abort)
+
+        self.enable_abort_btn(False)
 
         vsizer_player_info.Add(players_info_text, 1)
         vsizer_player_info.Add(self.num_players, 1)
 
         hsizer_main.Add(vsizer_player_info, 1, wx.EXPAND | wx.ALL, 10)
-        hsizer_main.Add(btn_make_map, 1, wx.EXPAND | wx.ALL, 10)
-        hsizer_main.Add(btn_randomize, 1, wx.EXPAND | wx.ALL, 10)
+        hsizer_main.Add(btn_make_map, 2, wx.EXPAND | wx.ALL, 10)
+        hsizer_main.Add(btn_randomize, 2, wx.EXPAND | wx.ALL, 10)
+        hsizer_main.Add(self.progress, 1, wx.EXPAND | wx.ALL, 25)
+        hsizer_main.Add(self.btn_abort, 1, wx.EXPAND | wx.ALL, 10)
+
 
         vsizer.Add(hsizer_main, 0, wx.EXPAND)
 
@@ -76,7 +89,7 @@ class MainFrame(wx.Frame):
 
         hsizer_iterations = wx.BoxSizer(wx.HORIZONTAL)
         num_iterations_txt = wx.StaticText(self, 0, "Number of iterations")
-        self.num_iterations = wx.TextCtrl(self, value=str(10)) # TODO: set default
+        self.num_iterations = wx.TextCtrl(self, value=str(default_num_iterations))
 
         hsizer_iterations.Add(num_iterations_txt, 3, wx.EXPAND | wx.ALL, 5)
         hsizer_iterations.Add(self.num_iterations, 1)
@@ -84,7 +97,7 @@ class MainFrame(wx.Frame):
 
         hsizer_radius = wx.BoxSizer(wx.HORIZONTAL)
         radius_txt = wx.StaticText(self, 0, "Relevant neighbor radius")
-        self.radius = wx.TextCtrl(self, value=str(2))  # TODO: set default
+        self.radius = wx.TextCtrl(self, value=str(default_radius))
 
         hsizer_radius.Add(radius_txt, 3, wx.EXPAND | wx.ALL, 5)
         hsizer_radius.Add(self.radius, 1)
@@ -92,7 +105,7 @@ class MainFrame(wx.Frame):
 
         hsizer_cluster = wx.BoxSizer(wx.HORIZONTAL)
         cluster_txt = wx.StaticText(self, 0, "Max cluster size")
-        self.cluster_size = wx.TextCtrl(self, value=str(4))  # TODO: set default
+        self.cluster_size = wx.TextCtrl(self, value=str(default_cluster_size))
 
         hsizer_cluster.Add(cluster_txt, 3, wx.EXPAND | wx.ALL, 5)
         hsizer_cluster.Add(self.cluster_size, 1)
@@ -100,7 +113,7 @@ class MainFrame(wx.Frame):
 
         hsizer_neighbor = wx.BoxSizer(wx.HORIZONTAL)
         neighbor_txt = wx.StaticText(self, 0, "Minimum distance between equal planets")
-        self.min_neighbor_distance = wx.TextCtrl(self, value=str(2))  # TODO: set default
+        self.min_neighbor_distance = wx.TextCtrl(self, value=str(default_min_neighbor_distance))
 
         hsizer_neighbor.Add(neighbor_txt, 3, wx.EXPAND | wx.ALL, 5)
         hsizer_neighbor.Add(self.min_neighbor_distance, 1)
@@ -311,14 +324,15 @@ class MainFrame(wx.Frame):
         elif method == 1:
             map.set_method_1_params(nearness_param, density_param, ratio_param)
 
-        map.balance_map()
+        self.enable_abort_btn(True)
+        map.balance_map(self.set_progress, self.should_abort)
         map.set_to_balanced_map()
-
-        #map.set_image_name("test_map")
-
 
         map_setup = MapSetup(self, map)
         map_setup.Show(True)
+
+        self.set_progress(0)
+        self.abort = "No"
 
     def make_menu(self):
         pass
@@ -328,6 +342,32 @@ class MainFrame(wx.Frame):
 
     def get_default_num_players(self):
         return self.default_num_players
+
+    def set_progress(self, progress):
+        wx.Yield()
+        if progress == 0:
+            self.progress.SetLabel("Map progress: 0%")
+        elif progress < 100:
+            self.progress.SetLabel("Map progress: " + str(progress) + "%")
+        else:
+            self.enable_abort_btn(False)
+            self.progress.SetLabel("Creating image...")
+
+    def enable_abort_btn(self, boolean):
+        if boolean:
+            print "RED!"
+            self.btn_abort.SetBackgroundColour(wx.RED)
+            self.btn_abort.Enable()
+        else:
+            self.btn_abort.SetBackgroundColour(None)
+            self.btn_abort.Disable()
+
+
+    def should_abort(self):
+        return self.abort
+
+    def on_abort(self, event=None):
+        self.abort = "Yes"
 
 class MapSetup(wx.Frame):
     def __init__(self, parent, map, image_path=default_map_path):
