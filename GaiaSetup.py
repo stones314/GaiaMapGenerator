@@ -40,6 +40,7 @@ class MainFrame(wx.Frame):
     def __init__(self, parent=None):
         super(MainFrame, self).__init__(parent, title="Gaia Setup", size=(1200, 850))
         self.default_font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+        self.bold_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
         self.make_menu()
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self.SetFont(self.default_font)
@@ -164,6 +165,7 @@ class MainFrame(wx.Frame):
         # Neighbors method
         vsizer_neighbors = wx.BoxSizer(wx.VERTICAL)
         method_neighbor_txt = wx.StaticText(self, 0, "Neighbors method")
+        method_neighbor_txt.SetFont(self.bold_font)
         vsizer_neighbors.Add(method_neighbor_txt, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_terra = wx.BoxSizer(wx.HORIZONTAL)
@@ -213,6 +215,7 @@ class MainFrame(wx.Frame):
         # Distribution method
         vsizer_distribution = wx.BoxSizer(wx.VERTICAL)
         method_distribution_txt = wx.StaticText(self, 0, "Distribution method")
+        method_distribution_txt.SetFont(self.bold_font)
         vsizer_distribution.Add(method_distribution_txt, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_nearness = wx.BoxSizer(wx.HORIZONTAL)
@@ -257,7 +260,7 @@ class MainFrame(wx.Frame):
             - min value of 3 (recommended 4 or greater)
             
         Minimum distance between equal planets:
-            - not included gaia (default: min 2) and transdim planets
+            - not included gaia (using 2 as minimum) and transdim planets
             
         Keep core sectors
             - Sectors 1, 2, 3 and 4 in kept in the centre ()
@@ -485,6 +488,7 @@ class RandomSetup(wx.Frame):
 
         ico = wx.Icon('images/tech_icon.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(ico)
+        self.SetBackgroundColour("#FFFFFF")
 
         hsizer_output = wx.BoxSizer(wx.HORIZONTAL)
         vsizer_overall = wx.BoxSizer(wx.VERTICAL)
@@ -496,11 +500,7 @@ class RandomSetup(wx.Frame):
         hsizer_boosters = wx.BoxSizer(wx.HORIZONTAL)
         hsizer_round_score = wx.BoxSizer(wx.HORIZONTAL)
         vsizer_end_score = wx.BoxSizer(wx.VERTICAL)
-
-        htracks = [hsizer_tech_tracks, hsizer_extra_tech, hsizer_round_score, hsizer_boosters]
-
-        background = wx.Image(background_path, wx.BITMAP_TYPE_ANY)
-        background_img = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(background))
+        hsizer_round_and_end_score = wx.BoxSizer(wx.HORIZONTAL)
 
         for i, list in enumerate(list_of_pieces):
             random.shuffle(list)
@@ -513,12 +513,14 @@ class RandomSetup(wx.Frame):
 
                 path = image_path + list_of_pieces[0][0] + image_format
                 brown_fed = wx.Image(path, wx.BITMAP_TYPE_ANY)
+
                 W = brown_fed.GetWidth()
                 H = brown_fed.GetHeight()
                 local_factor = 0.8
                 brown_fed = brown_fed.Scale(int(W * resize_factor * local_factor),
                                             int(H * resize_factor * local_factor))
                 brown_fed_image = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(brown_fed))
+
                 brown_vsizer1.Add(brown_fed_image, 1, wx.ALL)
 
                 path1 = image_path + list_of_pieces[1][i] + image_format
@@ -618,16 +620,32 @@ class RandomSetup(wx.Frame):
 
             vsizer_end_score.Add(img_bm, 1, wx.ALL, 5)
 
-        hsizer_round_score.Add(vsizer_end_score, 1, wx.ALL, 5)
-        vsizer_output.Add(hsizer_round_score, 1, wx.EXPAND | wx.ALL, 5)
+        hsizer_round_and_end_score.Add(hsizer_round_score, 1, wx.ALL, 30)
+        hsizer_round_and_end_score.Add(vsizer_end_score, 1, wx.ALL, 5)
+        vsizer_output.Add(hsizer_round_and_end_score, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_output.Add(vsizer_output, 1, wx.EXPAND | wx.ALL, 5)
         vsizer_overall.Add(hsizer_output, 0, wx.EXPAND)
 
         self.SetSizer(vsizer_overall)
 
+        self.Bind(wx.EVT_ERASE_BACKGROUND, self.OnEraseBackground)
+
         self.Centre()
         self.Show()
+
+    def OnEraseBackground(self, event):
+        dc = event.GetDC()
+
+        if not dc:
+            dc = wx.ClientDC(self)
+            rect = self.GetUpdateRegion().GetBox()
+            dc.SetClippingRect(rect)
+
+        dc.Clear()
+        bmp = wx.Bitmap(background_path)
+        dc.DrawBitmap(bmp, 0, 0)
+
 
 class PopupWindow(wx.PopupWindow):
     def __init__(self, parent, message, header_txt = None, size=(500, 300)):
@@ -661,9 +679,6 @@ class PopupWindow(wx.PopupWindow):
 
     def on_close(self, event):
         self.Destroy()
-
-
-
 
 
 if __name__ == "__main__":
