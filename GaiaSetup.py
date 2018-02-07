@@ -25,6 +25,7 @@ default_num_iterations = 1000
 default_radius = 2
 default_cluster_size = 4
 default_min_neighbor_distance = 2
+default_max_edge_planets = 2
 
 default_terra_param = [1.0, 1.0, 0.1, 0.8]
 default_gaia_param = 1.0
@@ -38,7 +39,7 @@ default_ratio_param = 7
 
 class MainFrame(wx.Frame):
     def __init__(self, parent=None):
-        super(MainFrame, self).__init__(parent, title="Gaia Setup", size=(1200, 850))
+        super(MainFrame, self).__init__(parent, title="Gaia Setup", size=(1300, 900))
         self.default_font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
         self.bold_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
         self.make_menu()
@@ -64,6 +65,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.on_randomize, btn_randomize)
         self.progress = wx.StaticText(self, 0, str("Map progress: 0%"))
         self.balance = wx.StaticText(self, 0, str(""))
+        self.rejected = wx.StaticText(self, 0, str(""))
         self.btn_abort = wx.Button(self, wx.ID_ABORT, label="Stop", size=(80, 40))
         self.Bind(wx.EVT_BUTTON, self.on_abort, self.btn_abort)
 
@@ -74,6 +76,7 @@ class MainFrame(wx.Frame):
 
         vsizer_progress = wx.BoxSizer(wx.VERTICAL)
         vsizer_progress.Add(self.progress, 1, wx.EXPAND | wx.ALL)
+        vsizer_progress.Add(self.rejected, 1, wx.EXPAND | wx.ALL)
         vsizer_progress.Add(self.balance, 1, wx.EXPAND | wx.ALL)
 
         hsizer_main.Add(vsizer_player_info, 1, wx.EXPAND | wx.ALL, 10)
@@ -91,17 +94,9 @@ class MainFrame(wx.Frame):
         vsizer_setup_2 = wx.BoxSizer(wx.VERTICAL)
         vsizer_info = wx.BoxSizer(wx.VERTICAL)
 
-        methods = ["Neighbors", "Distribution", "Big clusters"]
+        methods = ["Planet Type Happiness", "Distribution", "Big Clusters"]
         self.method_box = wx.RadioBox(self, label="Optimization method", choices=methods)
         vsizer_setup.Add(self.method_box, -1, wx.EXPAND | wx.ALL, 10)
-
-        hsizer_iterations = wx.BoxSizer(wx.HORIZONTAL)
-        num_iterations_txt = wx.StaticText(self, 0, "Number of iterations")
-        self.num_iterations = wx.TextCtrl(self, value=str(default_num_iterations))
-
-        hsizer_iterations.Add(num_iterations_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_iterations.Add(self.num_iterations, 1)
-        vsizer_setup_2.Add(hsizer_iterations, 1, wx.EXPAND | wx.ALL)
 
         hsizer_radius = wx.BoxSizer(wx.HORIZONTAL)
         radius_txt = wx.StaticText(self, 0, "Relevant neighbor radius")
@@ -111,8 +106,16 @@ class MainFrame(wx.Frame):
         hsizer_radius.Add(self.radius, 1)
         vsizer_setup_2.Add(hsizer_radius, 1, wx.EXPAND | wx.ALL)
 
+        hsizer_iterations = wx.BoxSizer(wx.HORIZONTAL)
+        num_iterations_txt = wx.StaticText(self, 0, "Number of iterations")
+        self.num_iterations = wx.TextCtrl(self, value=str(default_num_iterations))
+
+        hsizer_iterations.Add(num_iterations_txt, 3, wx.EXPAND | wx.ALL, 5)
+        hsizer_iterations.Add(self.num_iterations, 1)
+        vsizer_setup_2.Add(hsizer_iterations, 1, wx.EXPAND | wx.ALL)
+
         hsizer_cluster = wx.BoxSizer(wx.HORIZONTAL)
-        cluster_txt = wx.StaticText(self, 0, "Max cluster size")
+        cluster_txt = wx.StaticText(self, 0, "Maximum cluster size")
         self.cluster_size = wx.TextCtrl(self, value=str(default_cluster_size))
 
         hsizer_cluster.Add(cluster_txt, 3, wx.EXPAND | wx.ALL, 5)
@@ -126,6 +129,14 @@ class MainFrame(wx.Frame):
         hsizer_neighbor.Add(neighbor_txt, 3, wx.EXPAND | wx.ALL, 5)
         hsizer_neighbor.Add(self.min_neighbor_distance, 1)
         vsizer_setup_2.Add(hsizer_neighbor, 1, wx.EXPAND | wx.ALL)
+
+        hsizer_edge = wx.BoxSizer(wx.HORIZONTAL)
+        edge_txt = wx.StaticText(self, 0, "Maximum edge planets")
+        self.max_edge_planets = wx.TextCtrl(self, value=str(default_max_edge_planets))
+
+        hsizer_edge.Add(edge_txt, 3, wx.EXPAND | wx.ALL, 5)
+        hsizer_edge.Add(self.max_edge_planets, 1)
+        vsizer_setup_2.Add(hsizer_edge, 1, wx.EXPAND | wx.ALL)
 
         vsizer_setup.Add(vsizer_setup_2, 1, wx.EXPAND | wx.ALL, 10)
 
@@ -164,12 +175,12 @@ class MainFrame(wx.Frame):
 
         # Neighbors method
         vsizer_neighbors = wx.BoxSizer(wx.VERTICAL)
-        method_neighbor_txt = wx.StaticText(self, 0, "Neighbors method")
+        method_neighbor_txt = wx.StaticText(self, 0, "Happiness method")
         method_neighbor_txt.SetFont(self.bold_font)
         vsizer_neighbors.Add(method_neighbor_txt, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_terra = wx.BoxSizer(wx.HORIZONTAL)
-        terra_txt = wx.StaticText(self, 0, "Terra parameters [home, 1, 2, 3]:")
+        terra_txt = wx.StaticText(self, 0, "Terraform steps [0, 1, 2, 3]:")
         self.terra_home = wx.TextCtrl(self, value=str(default_terra_param[0]), size=(50, -1))
         self.terra_1 = wx.TextCtrl(self, value=str(default_terra_param[1]), size=(50, -1))
         self.terra_2 = wx.TextCtrl(self, value=str(default_terra_param[2]), size=(50, -1))
@@ -183,7 +194,7 @@ class MainFrame(wx.Frame):
         vsizer_neighbors.Add(hsizer_terra, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_gaia = wx.BoxSizer(wx.HORIZONTAL)
-        gaia_txt = wx.StaticText(self, 0, "Gaia parameter:")
+        gaia_txt = wx.StaticText(self, 0, "Gaia:")
         self.gaia_param = wx.TextCtrl(self, value=str(default_gaia_param))
 
         hsizer_gaia.Add(gaia_txt, 3, wx.EXPAND | wx.ALL, 5)
@@ -191,7 +202,7 @@ class MainFrame(wx.Frame):
         vsizer_neighbors.Add(hsizer_gaia, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_trans = wx.BoxSizer(wx.HORIZONTAL)
-        trans_txt = wx.StaticText(self, 0, "Trans dimentional parameter:")
+        trans_txt = wx.StaticText(self, 0, "Trans-Dim:")
         self.trans_param = wx.TextCtrl(self, value=str(default_trans_param))
 
         hsizer_trans.Add(trans_txt, 3, wx.EXPAND | wx.ALL, 5)
@@ -199,7 +210,7 @@ class MainFrame(wx.Frame):
         vsizer_neighbors.Add(hsizer_trans, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_range = wx.BoxSizer(wx.HORIZONTAL)
-        range_txt = wx.StaticText(self, 0, "Range parameters [1, 2, 3]:")
+        range_txt = wx.StaticText(self, 0, "Range Factor [1, 2, 3]:")
         self.range_1 = wx.TextCtrl(self, value=str(default_range_factor[1]), size=(50, -1))
         self.range_2 = wx.TextCtrl(self, value=str(default_range_factor[2]), size=(50, -1))
         self.range_3 = wx.TextCtrl(self, value=str(default_range_factor[3]), size=(50, -1))
@@ -219,7 +230,7 @@ class MainFrame(wx.Frame):
         vsizer_distribution.Add(method_distribution_txt, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_nearness = wx.BoxSizer(wx.HORIZONTAL)
-        nearness_txt = wx.StaticText(self, 0, "Nearness weight:")
+        nearness_txt = wx.StaticText(self, 0, "Distribution Type Weight:")
         self.nearness_param = wx.TextCtrl(self, value=str(default_nearness_param))
 
         hsizer_nearness.Add(nearness_txt, 3, wx.EXPAND | wx.ALL, 5)
@@ -246,41 +257,43 @@ class MainFrame(wx.Frame):
 
         info = """
         Methods:
-        - Neighbors: Optimize for planet neighbors based on priority factors
-        - Distribution: Even distribution of planets based on prioritized parameters
-        - Big clusters: Optimize for large average cluster sizes
+        - Planet Type Happiness: Search for maps that has similar happiness for all
+          planet types (i.e. minimize variance of happiness)
+        - Distribution: Search for maps with optimal distribution of planets based on
+          planet density (number of planets in an area) and/or
+          planet types (number of different planet types in an area).
+        - Big clusters: Search for maps with large average cluster sizes
         
-        Number of iterations:
-            - how many legal maps to evaluate
+        Relevant neighbor radius: Used in the two first methods to define area of influence
+        
+        Number of iterations: How many legal maps to evaluate
+        Illegal maps are rejected during the search, only legal maps are evaluated.
+        A legal map follow all the limitations given by:
+        - Maximum cluster size allowed
+        - Minimum distance between equal planets (not Gaia or Trans Dimentional)
+        - Maximum edge planets allowed for a planet type
+        NOTE: if you have too strong restrictions you might make an infinite loop
+              where it is never able to find a legal map.
             
-        Relevant neighbor radius:
-            - 0 is planets own location
+        Keep core sectors:
+          Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random
             
-        Max cluster size:
-            - min value of 3 (recommended 4 or greater)
+        2-player, Do not allow hex 6 in centre: Because few planets in this sector
             
-        Minimum distance between equal planets:
-            - not included gaia (using 2 as minimum) and transdim planets
+        3-player, Smaller map: Use only two hexes in row 2
             
-        Keep core sectors
-            - Sectors 1, 2, 3 and 4 in kept in the centre ()
-            
-        2-player: Do not allow hex 6 in centre
-            - Few planets in this sector
-            
-        3-player: Smaller map
-            - Use only two hexes in row 2
-            
-        Parameters - Neighbors method:
-            - terra_param: preference of neighbors based on terraforming distance
-            - gaia_param: preference of gaia planet nearby
-            - trans_param: preference of trans dimentional planet nearby
-            - range_factor: value of planet based on distance (radius)
+        Parameters - Happiness method:
+            - Terraform: how much happiness increases based on terraform cost of neighbours
+            - Gaia: how much happiness increases with gaia planet as neighbour
+            - Trans-Dim: how much happiness increases with trans-dim planet as neighbour
+            - Range Factor: how the range to a neighbour effects the happiness
         
         Parameters - Distribution method:
-            - Nearness weight (0-1): planet density (1.0) vs planet type (0.0)
-            - Planet Density Dropoff Scale (0-inf): Ideal density priority
-            - Type Ratio Dropoff Scale (0-inf): Ideal planet distribution priority        
+            - Distribution Type: 1.0 for planet density, 0.0 for planet types, 0.N for a mix
+            - Planet Density and Type Ratio Dropoff Scale (0-inf):
+              How bad it is to differ from optimal value. Lower number means less bad.         
+              
+        
         
         """
 
@@ -350,6 +363,12 @@ class MainFrame(wx.Frame):
             self.on_error("Minimum distance between planets of equal color can not be greater than 4")
             return
 
+        max_edge_planets = int(self.max_edge_planets.GetValue())
+        if max_edge_planets < 1:
+            self.max_edge_planets.SetValue(default_max_edge_planets)
+            self.on_error("Maximum edge planets for a planet type must be at least 1")
+            return
+
         terra_param = [float(self.terra_home.GetValue()), float(self.terra_1.GetValue()),
                        float(self.terra_2.GetValue()), float(self.terra_3.GetValue())]
         gaia_param = float(self.gaia_param.GetValue())
@@ -389,9 +408,10 @@ class MainFrame(wx.Frame):
         map.set_try_count(num_iteration)
         map.set_search_radius(radius)
         map.set_max_cluster_size(cluster_size)
+        map.set_max_edge_planets(max_edge_planets)
         map.set_minimum_equal_range(min_neighbor_distance)
 
-        if method == 0: #
+        if method == 0:
             map.set_method_0_params(terra_param, gaia_param, trans_param, range_factor)
             self.quality_description = "Variance"
         elif method == 1:
@@ -403,11 +423,12 @@ class MainFrame(wx.Frame):
         self.enable_abort_btn(True)
         map.balance_map(self.set_progress, self.should_abort)
         map.set_to_balanced_map()
+        map.calculate_balance(1)
 
         map_setup = MapSetup(self, map)
         map_setup.Show(True)
 
-        self.set_progress(0, 0)
+        self.set_progress(0, 0, 0)
         self.abort = False
 
     def make_menu(self):
@@ -419,19 +440,22 @@ class MainFrame(wx.Frame):
     def get_default_num_players(self):
         return self.default_num_players
 
-    def set_progress(self, progress, balance):
+    def set_progress(self, progress, balance, rejected):
         wx.Yield()
         self.quality_description
         if progress == 0:
             self.progress.SetLabel("Map progress: 0%")
+            self.rejected.SetLabel("Rejected: 0")
             self.balance.SetLabel(self.quality_description + ": NA")
         elif progress < 100:
             self.progress.SetLabel("Map progress: " + str(progress) + "%")
-            self.balance.SetLabel(self.quality_description  + ": {:06.4f}".format(balance))
+            self.rejected.SetLabel("Rejected: " + str(rejected))
+            self.balance.SetLabel(self.quality_description + ": {:06.4f}".format(balance))
         else:
             self.enable_abort_btn(False)
             self.progress.SetLabel("Creating image...")
-            self.balance.SetLabel(self.quality_description  + ": {:06.4f}".format(balance))
+            self.rejected.SetLabel("Rejected: " + str(rejected))
+            self.balance.SetLabel(self.quality_description + ": {:06.4f}".format(balance))
 
     def enable_abort_btn(self, boolean):
         if boolean:
