@@ -221,13 +221,13 @@ def has_equal_neigbours(hex_map, radius=2):
         for row in range(n_rows):  # looping through the map
             if hex_map[col][row] == "Tr" or hex_map[col][row] is None or hex_map[col][row] == "Em":
                 continue
-            for R in range(1, radius+1):
+            for R in range(1, radius + 1):
                 if R > 1 and hex_map[col][row] == "Ga":
                     break
                 neighbours = get_hexes_at_radius(col, row, R)
                 for coords in neighbours:
                     if coords[0] < 0 or coords[1] < 0:
-                        continue # in case we are outside the map
+                        continue  # in case we are outside the map
                     if coords[0] >= n_cols or coords[1] >= n_rows:
                         continue  # in case we are at the end of a col/row
                     if hex_map[col][row] == hex_map[coords[0]][coords[1]]:
@@ -285,7 +285,7 @@ def calc_happiness(planet_type, hex_map, GP, TP, HP, max_range, RF):
     for col in range(n_cols):
         for row in range(n_rows):
             if hex_map[col][row] == planet_type:
-                for R in range(1, max_range+1):
+                for R in range(1, max_range + 1):
                     coords = get_hexes_at_radius(col, row, R)
                     for coord in coords:
                         if coord[0] < 0 or coord[0] >= n_cols:
@@ -302,7 +302,7 @@ def calc_happiness(planet_type, hex_map, GP, TP, HP, max_range, RF):
                             color_dist = get_color_dist(hex_map[col][row], hex_map[coord[0]][coord[1]])
                             happiness += HP[color_dist] * RF[R]
                         n_data += 1
-    return happiness #/ n_data #not sure if we shoul "normalize" value or not... (if it makes sense)
+    return happiness  # / n_data #not sure if we shoul "normalize" value or not... (if it makes sense)
 
 
 def get_cluster_size_list(hex_map, ignored_types=[None, "Em"]):
@@ -492,6 +492,7 @@ def calc_map_happiness(hex_map, NW=0.5, PD_SC=30.0, TR_SC=5.0, radius=3):
     happiness_percentage = 100.0 * total_happiness / n_hexes
     return [happiness_percentage, total_happiness, n_hexes]
 
+
 def check_equal_neighbour_and_edge_status(col, row, hex_map, no_equal_radius=2):
     n_cols = len(hex_map)
     n_rows = len(hex_map[0])
@@ -521,7 +522,8 @@ def check_equal_neighbour_and_edge_status(col, row, hex_map, no_equal_radius=2):
 
 
 class Map(object):
-    def __init__(self, num_players, random=True, keep_core_sectors=False, disable_6_as_centre_in_2p=False, use_323_layout=False):
+    def __init__(self, num_players, random=True, keep_core_sectors=False, disable_6_as_centre_in_2p=False,
+                 use_323_layout=False):
         """
         2-player: 2-3-2, hex 1, 2, 3, 4, 5_,6_,7_ (option: 6_ not in centre)
         3- and 4-player: 3-4-3, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
@@ -539,7 +541,7 @@ class Map(object):
         self.keep_core_sectors = keep_core_sectors
         self.disable_6_as_centre_in_2p = disable_6_as_centre_in_2p
         self.use_323_layout = use_323_layout
-        self.max_rejected_rotations = 1000000
+        self.max_rejected_rotations = 10000
 
         self.image_location = "images/"
         self.image_name = "Gaia_map"
@@ -554,32 +556,34 @@ class Map(object):
 
         self.debug_level = 0
 
-        #parameters used to eliminate illegal maps after rotation,
-        #if these requirements are not met the rotation will continue
-        self.minimal_equal_range = 3 #minimum range between equal planets (except Gaia and Transdim)
-        self.maximum_cluster_size = 5 #set to 10 to ignore cluster size
-        self.maximum_edge_planets = 3 #max number of edge planets allowed for a planet type
+        # parameters used to eliminate illegal maps after rotation,
+        # if these requirements are not met the rotation will continue
+        self.minimal_equal_range = 3  # minimum range between equal planets (except Gaia and Transdim)
+        self.maximum_cluster_size = 5  # set to 10 to ignore cluster size
+        self.maximum_edge_planets = 3  # max number of edge planets allowed for a planet type
 
         self.map = None
         self.set_map()
         self.generate_full_map()
 
-        #general parameters used in optimizations
+        # general parameters used in optimizations
         self.try_count = 100
         self.search_radius = 2
         self.best_balance = 0.0
         self.reset_best_map_value()
         self.best_map_data = self.get_printable_map_data()
+        self.previous_valid_map = self.best_map_data
+        self.has_valid_map = False
         self.rejected_maps = 0
 
         # parameters used in the happiness calculation v0:
-        self.range_factor = [1.0, 1.0/6.0, 1.0/12.0, 1.0/18.0]
+        self.range_factor = [1.0, 1.0 / 6.0, 1.0 / 12.0, 1.0 / 18.0]
         self.terraform_param = [2.0, 1.0, 1.0, 1.0]
         self.gaia_param = 2.0
         self.trans_param = 1.0
 
         # parameters used in optimization v1:
-        self.NW = 0.5     # 1.0: only planet density (PD), 0.0: only Type Ratio (TR)
+        self.NW = 0.5  # 1.0: only planet density (PD), 0.0: only Type Ratio (TR)
         self.PD_SC = 40.0
         self.TR_SC = 7.0
 
@@ -610,7 +614,7 @@ class Map(object):
                         Small[4] = reminding_sectors[1]
                         Small[6] = reminding_sectors[2]
                     else:
-                        #shift core sectors to the right
+                        # shift core sectors to the right
                         Small[1] = Small[0]
                         Small[4] = Small[3]
                         Small[3] = Small[2]
@@ -697,6 +701,7 @@ class Map(object):
         for j, row in enumerate(self.map):
             for i, sector in enumerate(row):
                 sector_rotation = map_data[j][i][1]
+                sector.set_ID(map_data[j][i][0])
                 while sector.get_rotation_deg() != sector_rotation:
                     sector.rotate_sector_once()
         self.generate_full_map()
@@ -717,14 +722,12 @@ class Map(object):
         sector list = [(sector, rotation)]
         """
         sector_list = self.get_printable_map_data()
-        print sector_list
-
+        #print sector_list
 
         max_row_width = len(sector_list[0])
-        for i in range(1,3):
+        for i in range(1, 3):
             if len(sector_list[i]) > max_row_width:
                 max_row_width = len(sector_list[i])
-
 
         map_image_width = int(self.sector_image_width * max_row_width * 4.82 / 5.0)
         if self.use_323_layout:
@@ -755,7 +758,8 @@ class Map(object):
             for i, (sector_number, sector_rotation) in enumerate(row):
                 filename = self.image_location + sector_number + self.image_format
                 hor = int(h_offsets[j]) + int(self.sector_image_width * h_scale * i)
-                ver = int(v_offsets[j]) + (int(self.sector_image_height * v_scale * j)) + int(sector_start_vertical + height_adjustment * i)
+                ver = int(v_offsets[j]) + (int(self.sector_image_height * v_scale * j)) + int(
+                    sector_start_vertical + height_adjustment * i)
                 image = Image.open(filename)
                 image = image.rotate(-sector_rotation)
                 self.map_picture.paste(image, (hor, ver), image)
@@ -771,137 +775,6 @@ class Map(object):
         self.make_image_map(self.clockwise)
         address = self.image_location + self.image_name + self.image_format
         self.map_picture.save(address)
-
-    def rotate_map_randomly(self, abort_received_func=None):
-        do_rotate = 1
-        n_iter = 0
-        core_sectors = ["1", "2", "3", "4"]
-        while do_rotate == 1 and n_iter < self.max_rejected_rotations:
-            if abort_received_func is not None:
-                do_abort = abort_received_func()
-                if do_abort:
-                    print "ABORT!"
-                    break
-            for row in self.map:
-                for sector in row:
-                    if self.keep_core_sectors and sector.get_id() in core_sectors:
-                        continue
-                    n_rot = random.randint(0, 5)
-                    sector.rotate_sector(n_rot)
-            self.generate_full_map()
-            map_valid = self.is_valid_map()
-            if not map_valid:
-                n_iter += 1
-                continue
-            '''
-            if has_equal_neigbours(self.full_map, self.minimal_equal_range - 1) == 1:
-                n_iter += 1
-                continue
-            if self.maximum_cluster_size > 9:
-                break
-            cluster_sizes = get_cluster_size_list(self.full_map)
-            if max(cluster_sizes) > self.maximum_cluster_size:
-                n_iter += 1
-                continue
-            '''
-            do_rotate = 0
-        if self.debug_level == 1:
-            print n_iter
-        self.rejected_maps += n_iter
-
-    def is_valid_map(self):
-        """
-        Function that checks various validity parameters for a map
-        This is a merged version of other such functions that was defined earliser
-        Merged them so that we have to iterate through the map fewer times
-        """
-        planet_type_edge_count = {"Br": 0,
-                                  "Bk": 0,
-                                  "Ye": 0,
-                                  "Re": 0,
-                                  "Or": 0,
-                                  "Bl": 0,
-                                  "Wh": 0}
-
-        n_cols = len(self.full_map)
-        if n_cols < 1:
-            return False
-        n_rows = len(self.full_map[0])
-        if n_rows < 1:
-            return False
-        ignored_types = [None, "Em"]
-        cluster_sizes = []
-        n_clusters = 0
-        visited = [[0 for x in range(n_rows)] for y in range(n_cols)]
-        for col in range(n_cols):
-            for row in range(n_rows):
-                if self.full_map[col][row] in ignored_types:
-                    visited[col][row] = 1
-                    continue
-                if visited[col][row] == 1:
-                    continue
-
-                # at this point we are at a planet in a hex that has not already been visited
-                # it is the start of a new cluster
-                n_clusters += 1
-                cluster_sizes.append(0)
-                cluster_planets = [[col, row]]
-                planet_index = 0
-                while planet_index < len(cluster_planets):
-                    planet_col = cluster_planets[planet_index][0]
-                    planet_row = cluster_planets[planet_index][1]
-                    planet_index += 1
-                    if visited[planet_col][planet_row] == 1:
-                        # need to check this here since it might have been visited after it was added to cluster_planets
-                        continue
-
-                    # at a new planet, cluster grows:
-                    cluster_sizes[n_clusters - 1] += 1
-                    visited[planet_col][planet_row] = 1
-
-                    if cluster_sizes[n_clusters - 1] > self.maximum_cluster_size:
-                        if self.debug_level == 2:
-                            print "invalid map, cluster size >= ", self.maximum_cluster_size + 1
-                        return False
-
-                    # check if planet has equal neighbour inside max range, or is an edge planet:
-                    if self.full_map[planet_col][planet_row] != "Tr":
-                        planet_data = check_equal_neighbour_and_edge_status(planet_col,
-                                                                            planet_row,
-                                                                            self.full_map,
-                                                                            self.minimal_equal_range - 1)
-                        if planet_data[0]:  # it has equal neighbour
-                            if self.debug_level == 2:
-                                print "invalid map, has equal neighbour ", self.full_map[planet_col][planet_row]
-                            return False
-                        if planet_data[1]:  # it is an edge planet
-                            planet_type_edge_count[self.full_map[planet_col][planet_row]] += 1
-                            if planet_type_edge_count[self.full_map[planet_col][planet_row]] > self.maximum_edge_planets:
-                                if self.debug_level == 2:
-                                    print "invalid map, edge planets ",self.full_map[planet_col][planet_row],planet_type_edge_count
-                                return False
-
-                    # check outwards for neighbour planets:
-                    neighbour_hexes = get_hexes_at_radius(planet_col, planet_row, 1)
-                    for hex_id in range(6):
-                        neighbour_col = neighbour_hexes[hex_id][0]
-                        neighbour_row = neighbour_hexes[hex_id][1]
-                        if neighbour_col < 0 or neighbour_row < 0:
-                            continue  # in case we are outside the map
-                        if neighbour_col >= n_cols or neighbour_col >= n_rows:
-                            continue  # in case we are at the end of a col/row
-                        if (visited[neighbour_col][neighbour_row] == 1)\
-                                or (self.full_map[neighbour_col][neighbour_row] in ignored_types):
-                            # ignore neighbour hex if it has been visited already or if it has an ignorable type of content
-                            continue
-                        cluster_planets.append(neighbour_hexes[hex_id])
-        #if max(planet_type_edge_count) > self.maximum_edge_planets:
-        #    return False
-        #if max(cluster_sizes) > self.maximum_cluster_size:
-        #    return False
-        if self.debug_level >= 2:
-            print "VALID MAP !!!! ", len(cluster_sizes)
-        return True
 
     def set_debug_level(self, debug_level):
         self.debug_level = debug_level
@@ -935,6 +808,128 @@ class Map(object):
         self.NW = NW
         self.PD_SC = PD_SC
         self.TR_SC = TR_SC
+
+    def rotate_map_randomly(self):
+        keep_looking = True
+        n_iter = 0
+        core_sectors = ["1", "2", "3", "4"]
+        while keep_looking:
+            for row in self.map:
+                for sector in row:
+                    if self.keep_core_sectors and sector.get_id() in core_sectors:
+                        continue
+                    n_rot = random.randint(0, 5)
+                    sector.rotate_sector(n_rot)
+            self.generate_full_map()
+            map_valid = self.is_valid_map()
+            if map_valid:
+                self.has_valid_map = True
+                self.previous_valid_map = self.get_printable_map_data()
+                keep_looking = False
+            else:
+                n_iter += 1
+                if n_iter >= self.max_rejected_rotations:
+                    keep_looking = False
+        if self.debug_level == 1:
+            print n_iter
+        self.rejected_maps += n_iter
+
+    def is_valid_map(self):
+        """
+        Function that checks various validity parameters for a map
+        This is a merged version of other such functions that was defined earliser
+        Merged them so that we have to iterate through the map fewer times
+        """
+        planet_type_edge_count = {"Br": 0,
+                                  "Bk": 0,
+                                  "Ye": 0,
+                                  "Re": 0,
+                                  "Or": 0,
+                                  "Bl": 0,
+                                  "Wh": 0}
+
+        n_cols = len(self.full_map)
+        if n_cols < 1:
+            return False
+        n_rows = len(self.full_map[0])
+        if n_rows < 1:
+            return False
+        ignored_types = [None, "Em"]
+        cluster_sizes = []
+        n_clusters = 0
+        n_planets = 0
+        visited = [[0 for x in range(n_rows)] for y in range(n_cols)]
+        for col in range(n_cols):
+            for row in range(n_rows):
+                if self.full_map[col][row] in ignored_types:
+                    visited[col][row] = 1
+                    continue
+                if visited[col][row] == 1:
+                    continue
+
+                # at this point we are at a planet in a hex that has not already been visited
+                # it is the start of a new cluster
+                n_clusters += 1
+                cluster_sizes.append(0)
+                cluster_planets = [[col, row]]
+                planet_index = 0
+                while planet_index < len(cluster_planets):
+                    planet_col = cluster_planets[planet_index][0]
+                    planet_row = cluster_planets[planet_index][1]
+                    planet_index += 1
+                    if visited[planet_col][planet_row] == 1:
+                        # need to check this here since it might have been visited after it was added to cluster_planets
+                        continue
+
+                    # at a new planet, cluster grows:
+                    cluster_sizes[n_clusters - 1] += 1
+                    visited[planet_col][planet_row] = 1
+                    n_planets += 1
+
+                    if cluster_sizes[n_clusters - 1] > self.maximum_cluster_size:
+                        if self.debug_level == 2:
+                            print "invalid map, cluster size >= ", self.maximum_cluster_size + 1
+                            print self.get_printable_map_data()
+                        return False
+
+                    # check if planet has equal neighbour inside max range, or is an edge planet:
+                    if self.full_map[planet_col][planet_row] != "Tr":
+                        planet_data = check_equal_neighbour_and_edge_status(planet_col,
+                                                                            planet_row,
+                                                                            self.full_map,
+                                                                            self.minimal_equal_range - 1)
+                        if planet_data[0]:  # it has equal neighbour
+                            if self.debug_level == 2:
+                                print "invalid map, has equal neighbour ", self.full_map[planet_col][planet_row]
+                                print self.get_printable_map_data()
+                            return False
+                        if planet_data[1]:  # it is an edge planet
+                            planet_type = self.full_map[planet_col][planet_row]
+                            planet_type_edge_count[planet_type] += 1
+                            if planet_type_edge_count[planet_type] > self.maximum_edge_planets:
+                                if self.debug_level == 2:
+                                    print "invalid map, edge planets ", planet_type, planet_type_edge_count
+                                    print self.get_printable_map_data()
+                                return False
+
+                    # check outwards for neighbour planets:
+                    neighbour_hexes = get_hexes_at_radius(planet_col, planet_row, 1)
+                    for hex_id in range(6):
+                        neighbour_col = neighbour_hexes[hex_id][0]
+                        neighbour_row = neighbour_hexes[hex_id][1]
+                        if neighbour_col < 0 or neighbour_row < 0:
+                            continue  # in case we are outside the map
+                        if neighbour_col >= n_cols or neighbour_col >= n_rows:
+                            continue  # in case we are at the end of a col/row
+                        if (visited[neighbour_col][neighbour_row] == 1) \
+                                or (self.full_map[neighbour_col][neighbour_row] in ignored_types):
+                            # ignore neighbour hex if it has been visited already or if it has an ignorable type of content
+                            continue
+                        cluster_planets.append(neighbour_hexes[hex_id])
+        if self.debug_level >= 2:
+            print "VALID MAP! n_clusters =", n_clusters, ", n_planets = ", n_planets
+            print self.get_printable_map_data()
+        return True
 
     def calculate_balance(self, print_happiness=0):
         if self.method == 0:
@@ -1015,6 +1010,23 @@ class Map(object):
             return balance > self.best_balance
 
     def balance_map(self, print_progress_func=None, break_received_func=None):
+        print "Starting search for balanced map! Parameters:"
+        print "n_players = ", self.num_players
+        print "n_iterations = ", self.try_count
+        print "max_cluster_size = ", self.maximum_cluster_size
+        print "max_edge_planets = ", self.maximum_edge_planets
+        print "min_equal_dist   = ", self.minimal_equal_range
+        print "method           = ", self.method
+        print "search radius    = ", self.search_radius
+        if self.method == 0:
+            print "terra_param = ", self.terraform_param
+            print "gaia_param  = ", self.gaia_param
+            print "trans_param = ", self.trans_param
+            print "range_factor = ", self.range_factor
+        elif self.method == 1:
+            print "type_weight = ", self.NW
+            print "dens dropoff = ", self.PD_SC
+            print "type dropoff = ", self.TR_SC
         self.reset_best_map_value()
         self.best_map_data = self.get_printable_map_data()
         progress = 0
@@ -1025,28 +1037,35 @@ class Map(object):
             progress_jump = 1
         print_progress_func(progress, self.best_balance, self.rejected_maps)
         for try_no in range(self.try_count):
+            self.rotate_map_randomly()
+            if self.has_valid_map:
+                self.set_map_by_map_data(self.previous_valid_map)
+                balance = self.calculate_balance()
+                if self.is_better_balance(balance):
+                    self.best_balance = balance
+                    self.best_map_data = self.get_printable_map_data()
+                    self.set_map_by_map_data(self.best_map_data)
+                    print "new best map: ", self.best_map_data
+                    print "it is valid: ", self.is_valid_map()
+            if try_no % (self.try_count / (int(100 / progress_jump))) == 0:
+                progress += progress_jump
+                if print_progress_func is not None:
+                    print_progress_func(progress, self.best_balance, self.rejected_maps)
             if break_received_func is not None:
                 do_break = break_received_func()
                 if do_break:
                     if print_progress_func is not None:
                         print_progress_func(100, self.best_balance, self.rejected_maps)
-                    break;
-            self.rotate_map_randomly(break_received_func)
-            #print "rejected map count:", self.rejected_maps
-            balance = self.calculate_balance()
-            if self.is_better_balance(balance):
-                self.best_balance = balance
-                self.best_map_data = self.get_printable_map_data()
-            if try_no % (self.try_count / (int(100/progress_jump))) == 0:
-                progress += progress_jump
-                if print_progress_func is not None:
-                    print_progress_func(progress, self.best_balance, self.rejected_maps)
+                    break
+
 
     def get_best_map_data(self):
         return self.best_map_data
 
     def set_to_balanced_map(self):
+        #print "set to best map A: ", self.best_map_data
         self.set_map_by_map_data(self.best_map_data)
+        #print "set to best map B: ", self.get_printable_map_data()
 
     def reset_best_map_value(self):
         if self.is_better_balance(-1.0):
@@ -1096,6 +1115,10 @@ class Sector(object):
         if self.rotation == 6:
             self.rotation = 0
 
+    def set_ID(self, ID):
+        self.ID = ID
+        self.content = Sector_data[ID]
+
     def get_content(self):
         return self.content
 
@@ -1108,55 +1131,59 @@ class Sector(object):
     def get_id(self):
         return self.ID
 
-def print_progress(progress, balance):
-    print "progress = ", progress, ", balance = ", balance
+
+def print_progress(progress, balance, rejected):
+    #derp = 1
+    print "progress = ", progress, ", rejected = ", rejected,", balance = ", balance
+
 
 if __name__ == "__main__":
-    test_map = Map(2, True, False, False, False)
+    test_map = Map(4, True, False, False, False)
     test_map.set_method(0)
-    test_map.set_debug_level(0)
+    test_map.set_debug_level(2)
     test_map.set_try_count(10)
     test_map.set_search_radius(2)
-    test_map.set_max_cluster_size(9)
-    test_map.set_minimum_equal_range(4)
+    test_map.set_max_cluster_size(5)
+    test_map.set_minimum_equal_range(3)
     test_map.set_max_edge_planets(2)
 
-    #method 0 params:
+    # method 0 params:
     terra_param = [1.0, 1.0, 0.1, 0.8]
     gaia_param = 1.0
     trans_param = 0.5
     range_factor = [1.0, 1.0, 0.6, 0.05]
     test_map.set_method_0_params(terra_param, gaia_param, trans_param, range_factor)
 
-    do_loop = 2
-    if do_loop == 1:
-        for i in range(16, 21):
-            print "Balancing map " + str(i)+"..."
-            test_map.balance_map()
-            print "Balance finished, best map have following data:"
-            test_map.set_to_balanced_map()
-            test_map.calculate_balance(1)
-            print "Saving image...\n"
-            if i < 10:
-                test_map.set_image_name("map0"+str(i))
-            else:
-                test_map.set_image_name("map" + str(i))
-            test_map.save_image_map()
-    elif do_loop == 2:
-        test_map.balance_map()#print_progress)
+    test = True
+
+    if test:
+        print "set up fixed map"
+        map_data_4p = [[['7', 60], ['2', 120], ['1', 300]], [['4', 240], ['3', 120], ['10', 180], ['6', 60]], [['9', 60], ['5', 180], ['8', 300]]]
+        test_map.set_map_by_map_data(map_data_4p)
+        test_map.is_valid_map()
+        test_map.set_image_name("testA")
+        test_map.save_image_map()
+        map_data_4p = [[['3', 240], ['10', 180], ['4', 240]], [['8', 0], ['7', 180], ['2', 120], ['5', 300]], [['6', 120], ['1', 180], ['9', 240]]]
+        test_map.set_map_by_map_data(map_data_4p)
+        test_map.is_valid_map()
+        test_map.set_image_name("testB")
+        test_map.save_image_map()
+    else:
+        test_map.balance_map(print_progress)
         test_map.set_to_balanced_map()
         test_map.is_valid_map()
-        #test_map.calculate_balance(1)
-        #print "Saving image...\n"
-        #test_map.set_image_name("test_map")
-        #test_map.save_image_map()
         test_map.show_image_map()
-    else:
-        test_map.calculate_balance(1)
 
+    #test_map.is_valid_map()
+    #test_map.calculate_balance(1)
+    #print "Saving image...\n"
+    #test_map.set_image_name("test_map")
+    #test_map.save_image_map()
     #test_map.show_image_map()
-    #hex_map = test_map.get_full_map()
-    #print has_equal_neigbours(hex_map)
+
+    # test_map.show_image_map()
+    # hex_map = test_map.get_full_map()
+    # print has_equal_neigbours(hex_map)
 
     '''
     for i in range(7):
@@ -1170,8 +1197,7 @@ if __name__ == "__main__":
         print " - Minimum distance:     " + str(stats[2])
         print " - Maximum distance:     " + str(stats[3])
     '''
-    #clusters = get_cluster_size_list(hex_map)
-    #print max(clusters)
-    #clusters.sort()
-    #print clusters
-
+    # clusters = get_cluster_size_list(hex_map)
+    # print max(clusters)
+    # clusters.sort()
+    # print clusters
