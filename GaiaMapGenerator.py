@@ -5,8 +5,8 @@ import random
 import copy
 import sys
 
-sys.stdout = open('my_stdout.log', 'w')
-sys.stderr = open('my_stderr.log', 'w')
+# sys.stdout = open('my_stdout.log', 'w')
+# sys.stderr = open('my_stderr.log', 'w')
 
 default_map_path = "images/Gaia_map.png"
 default_image_name = "Gaia_map"
@@ -1115,7 +1115,7 @@ GUI Stuff:
 
 class MainFrame(wx.Frame):
     def __init__(self, parent=None):
-        super(MainFrame, self).__init__(parent, title="Gaia Map Generator", size=(1300, 600))
+        super(MainFrame, self).__init__(parent, title="Gaia Map Generator", size=(1300, 800))
         self.default_font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
         self.bold_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
         self.make_menu()
@@ -1133,8 +1133,12 @@ class MainFrame(wx.Frame):
         hsizer_main = wx.BoxSizer(wx.HORIZONTAL)
         vsizer_player_info = wx.BoxSizer(wx.VERTICAL)
 
-        players_info_text = wx.StaticText(self, -1, "Number of players")
-        self.num_players = wx.TextCtrl(self, value=str(default_num_players))
+        #players_info_text = wx.StaticText(self, -1, "Number of players")
+        #self.num_players = wx.TextCtrl(self, value=str(default_num_players))
+
+        self.num_players_options = ["2", "3", "4"]
+        self.num_player_box = wx.RadioBox(self, label="Number of players", choices=self.num_players_options)
+
         btn_make_map = wx.Button(self, wx.ID_ADD, label="Generate map", size=(120, 40))
         self.Bind(wx.EVT_BUTTON, self.on_make_map, btn_make_map)
         btn_randomize = wx.Button(self, wx.ID_PAGE_SETUP, label="Randomize setup", size=(140, 40))
@@ -1147,20 +1151,20 @@ class MainFrame(wx.Frame):
 
         self.enable_abort_btn(False)
 
-        vsizer_player_info.Add(players_info_text, 1)
-        vsizer_player_info.Add(self.num_players, 1)
+        #vsizer_player_info.Add(players_info_text, 1)
+        #vsizer_player_info.Add(self.num_players, 1)
 
         vsizer_progress = wx.BoxSizer(wx.VERTICAL)
         vsizer_progress.Add(self.progress, 1, wx.EXPAND | wx.ALL)
         vsizer_progress.Add(self.rejected, 1, wx.EXPAND | wx.ALL)
         vsizer_progress.Add(self.balance, 1, wx.EXPAND | wx.ALL)
 
-        hsizer_main.Add(vsizer_player_info, 1, wx.EXPAND | wx.ALL, 10)
+        # hsizer_main.Add(vsizer_player_info, 1, wx.EXPAND | wx.ALL, 10)
+        hsizer_main.Add(self.num_player_box, 1, wx.EXPAND | wx.ALL, 10)
         hsizer_main.Add(btn_make_map, 2, wx.EXPAND | wx.ALL, 10)
         hsizer_main.Add(btn_randomize, 2, wx.EXPAND | wx.ALL, 10)
         hsizer_main.Add(vsizer_progress, 1, wx.EXPAND | wx.ALL, 20)
         hsizer_main.Add(self.btn_abort, 1, wx.EXPAND | wx.ALL, 10)
-
 
         vsizer.Add(hsizer_main, 0, wx.EXPAND)
 
@@ -1174,6 +1178,188 @@ class MainFrame(wx.Frame):
         self.method_box = wx.RadioBox(self, label="Optimization method", choices=methods)
         vsizer_setup.Add(self.method_box, -1, wx.EXPAND | wx.ALL, 10)
 
+        hsizer_name = wx.BoxSizer(wx.HORIZONTAL)
+        name_txt = wx.StaticText(self, 0, "Image name")
+        self.image_name = wx.TextCtrl(self, value=default_image_name)
+
+        hsizer_name.Add(name_txt, 3, wx.EXPAND | wx.ALL, 5)
+        hsizer_name.Add(self.image_name, 1)
+        vsizer_setup.Add(hsizer_name, 1, wx.EXPAND | wx.ALL, 5)
+
+        hsizer_iterations = wx.BoxSizer(wx.HORIZONTAL)
+        num_iterations_txt = wx.StaticText(self, 0, "Number of iterations")
+        hsizer_iterations.Add(num_iterations_txt, 4, wx.EXPAND | wx.ALL, 5)
+
+        self.num_iterations = [10, 100, 1000, 10000]
+        self.num_iterations_btn = []
+        for i, value in enumerate(self.num_iterations):
+            if i == 0:
+                btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
+            else:
+                btn = wx.RadioButton(self, label=str(value))
+            self.num_iterations_btn.append(btn)
+            hsizer_iterations.Add(btn, 1)
+            if value == 100:
+                btn.SetValue(True)
+
+        vsizer_setup.Add(hsizer_iterations, 1, wx.EXPAND | wx.ALL, 5)
+
+        hsizer_cluster = wx.BoxSizer(wx.HORIZONTAL)
+        cluster_txt = wx.StaticText(self, 0, "Maximum cluster size")
+        hsizer_cluster.Add(cluster_txt, 4, wx.EXPAND | wx.ALL, 5)
+
+        self.cluster_size = [4, 5, 6, 100]
+        self.cluster_size_btn = []
+        for i, value in enumerate(self.cluster_size):
+            if value == 100:
+                str_value = "7+"
+            else:
+                str_value = str(value)
+
+            if i == 0:
+                btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
+            else:
+                btn = wx.RadioButton(self, label=str(value))
+            self.cluster_size_btn.append(btn)
+            hsizer_cluster.Add(btn, 1)
+            if value == 5:
+                btn.SetValue(True)
+
+        vsizer_setup.Add(hsizer_cluster, 1, wx.EXPAND | wx.ALL, 5)
+
+        hsizer_neighbor = wx.BoxSizer(wx.HORIZONTAL)
+        neighbor_txt = wx.StaticText(self, 0, "Minimum distance between equal planets")
+        hsizer_neighbor.Add(neighbor_txt, 5, wx.EXPAND | wx.ALL, 5)
+
+        self.min_neighbor_distance = [2, 3, 4]
+        self.min_neighbor_distance_btn = []
+        for i, value in enumerate(self.min_neighbor_distance):
+            if i == 0:
+                btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
+            else:
+                btn = wx.RadioButton(self, label=str(value))
+            self.min_neighbor_distance_btn.append(btn)
+            hsizer_neighbor.Add(btn, 1)
+            if value == 3:
+                btn.SetValue(True)
+
+        vsizer_setup.Add(hsizer_neighbor, 1, wx.EXPAND | wx.ALL, 5)
+
+        hsizer_edge = wx.BoxSizer(wx.HORIZONTAL)
+        edge_txt = wx.StaticText(self, 0, "Maximum edge planets")
+        hsizer_edge.Add(edge_txt, 5, wx.EXPAND | wx.ALL, 5)
+
+        self.max_edge_planets = [1, 2, 3]
+        self.max_edge_planets_btn = []
+        for i, value in enumerate(self.max_edge_planets):
+            if i == 0:
+                btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
+            else:
+                btn = wx.RadioButton(self, label=str(value))
+            self.max_edge_planets_btn.append(btn)
+            hsizer_edge.Add(btn, 1)
+            if value == 2:
+                btn.SetValue(True)
+
+        vsizer_setup.Add(hsizer_edge, 1, wx.EXPAND | wx.ALL, 5)
+
+        hsizer_core = wx.BoxSizer(wx.HORIZONTAL)
+        core_txt = wx.StaticText(self, 0, "Keep core sectors")
+        self.rb_core_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
+        rb_core_no = wx.RadioButton(self, label="No")
+        rb_core_no.SetValue(True)
+
+        hsizer_core.Add(core_txt, 6, wx.EXPAND | wx.ALL, 5)
+        hsizer_core.Add(self.rb_core_yes, 1)
+        hsizer_core.Add(rb_core_no, 1)
+        vsizer_setup.Add(hsizer_core, 1, wx.EXPAND | wx.ALL, 5)
+
+        hsizer_center = wx.BoxSizer(wx.HORIZONTAL)
+        center_txt = wx.StaticText(self, 0, "2-player: Disable hex 6 in centre")
+        self.rb_center_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
+        rb_center_no = wx.RadioButton(self, label="No")
+        rb_center_no.SetValue(True)
+
+        hsizer_center.Add(center_txt, 6, wx.EXPAND | wx.ALL, 5)
+        hsizer_center.Add(self.rb_center_yes, 1)
+        hsizer_center.Add(rb_center_no, 1)
+        vsizer_setup.Add(hsizer_center, 1, wx.EXPAND | wx.ALL, 5)
+
+        hsizer_small = wx.BoxSizer(wx.HORIZONTAL)
+        small_txt = wx.StaticText(self, 0, "3-player: Smaller map")
+        self.rb_small_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
+        rb_small_no = wx.RadioButton(self, label="No")
+        rb_small_no.SetValue(True)
+
+        hsizer_small.Add(small_txt, 6, wx.EXPAND | wx.ALL, 5)
+        hsizer_small.Add(self.rb_small_yes, 1)
+        hsizer_small.Add(rb_small_no, 1)
+        vsizer_setup.Add(hsizer_small, 1, wx.EXPAND | wx.ALL, 5)
+
+        btn_advanced = wx.Button(self, wx.ID_FILE, label="Advanced settings", size=(120, 40))
+        self.Bind(wx.EVT_BUTTON, self.on_advanced, btn_advanced)
+
+        vsizer_setup.Add(btn_advanced, 1, wx.EXPAND | wx.ALL, 5)
+        hsizer_setup.Add(vsizer_setup, 1, wx.EXPAND)
+
+        info_padding = 5
+
+        header_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
+        small_header_font = wx.Font(12, wx.DECORATIVE, wx.ITALIC, wx.NORMAL)
+        method_header = wx.StaticText(self, 1, "Methods")
+        method_header.SetFont(header_font)
+        vsizer_info.Add(method_header, 0, wx.EXPAND | wx.ALL, info_padding)
+
+        methods_info = [["Planet Type Happiness:",
+                         "   Search for maps that has similar happiness for all planet types (i.e. minimize variance of happiness)"],
+                        ["Distribution:", "   Search for maps with even distribution of planet types."],
+                        ["Big clusters:", "   Search for maps with large average cluster sizes"]]
+
+        for method, description in methods_info:
+            small_header = wx.StaticText(self, 1, method)
+            small_header.SetFont(small_header_font)
+            vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+            info_text = wx.StaticText(self, 1, description)
+            vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+
+        settings_header = wx.StaticText(self, 1, "Settings")
+        settings_header.SetFont(header_font)
+        vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
+
+        settings_info = [["Number of iterations:",
+                          ["   How many legal maps to evaluate (Illegal maps are rejected during the search).",
+                           "   A legal map follow all the limitations given by",
+                           "   - Maximum cluster size allowed",
+                           "   - Minimum distance between equal planets (not Gaia or Trans Dimentional)",
+                           "   - Maximum number of edge planets allowed for a planet type",
+                           "   NOTE: if you have too strong restrictions you might make an infinite loop where it is never able to find a legal map."]],
+                         ["Keep core sectors:",
+                          "   Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random"],
+                         ["2-player: Disable hex 6 in centre", "   Since there are few planets in this sector"],
+                         ["3-player: Smaller map", "   Use only two hexes in row 2"]]
+
+        for i, (header, description) in enumerate(settings_info):
+            small_header = wx.StaticText(self, 1, header)
+            small_header.SetFont(small_header_font)
+            vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+
+            if i == 0:
+                for text in description:
+                    info_text = wx.StaticText(self, 1, text)
+                    vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+            else:
+                info_text = wx.StaticText(self, 1, description)
+                vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+
+        hsizer_setup.Add(vsizer_info, 1, wx.EXPAND, 10)
+
+        vsizer.Add(hsizer_setup, 1, wx.EXPAND)
+        self.SetSizer(vsizer)
+        self.Centre()
+        self.Show()
+
+    def on_advanced(self, event):
+        pass
         '''
         hsizer_radius = wx.BoxSizer(wx.HORIZONTAL)
         radius_txt = wx.StaticText(self, 0, "Relevant neighbor radius")
@@ -1183,81 +1369,6 @@ class MainFrame(wx.Frame):
         hsizer_radius.Add(self.radius, 1)
         vsizer_setup_2.Add(hsizer_radius, 1, wx.EXPAND | wx.ALL)
         '''
-
-        hsizer_name = wx.BoxSizer(wx.HORIZONTAL)
-        name_txt = wx.StaticText(self, 0, "Image name")
-        self.image_name = wx.TextCtrl(self, value=default_image_name)
-
-        hsizer_name.Add(name_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_name.Add(self.image_name, 1)
-        vsizer_setup_2.Add(hsizer_name, 1, wx.EXPAND | wx.ALL)
-
-        hsizer_iterations = wx.BoxSizer(wx.HORIZONTAL)
-        num_iterations_txt = wx.StaticText(self, 0, "Number of iterations")
-        self.num_iterations = wx.TextCtrl(self, value=str(default_num_iterations))
-
-        hsizer_iterations.Add(num_iterations_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_iterations.Add(self.num_iterations, 1)
-        vsizer_setup_2.Add(hsizer_iterations, 1, wx.EXPAND | wx.ALL)
-
-        hsizer_cluster = wx.BoxSizer(wx.HORIZONTAL)
-        cluster_txt = wx.StaticText(self, 0, "Maximum cluster size")
-        self.cluster_size = wx.TextCtrl(self, value=str(default_cluster_size))
-
-        hsizer_cluster.Add(cluster_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_cluster.Add(self.cluster_size, 1)
-        vsizer_setup_2.Add(hsizer_cluster, 1, wx.EXPAND | wx.ALL)
-
-        hsizer_neighbor = wx.BoxSizer(wx.HORIZONTAL)
-        neighbor_txt = wx.StaticText(self, 0, "Minimum distance between equal planets")
-        self.min_neighbor_distance = wx.TextCtrl(self, value=str(default_min_neighbor_distance))
-
-        hsizer_neighbor.Add(neighbor_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_neighbor.Add(self.min_neighbor_distance, 1)
-        vsizer_setup_2.Add(hsizer_neighbor, 1, wx.EXPAND | wx.ALL)
-
-        hsizer_edge = wx.BoxSizer(wx.HORIZONTAL)
-        edge_txt = wx.StaticText(self, 0, "Maximum edge planets")
-        self.max_edge_planets = wx.TextCtrl(self, value=str(default_max_edge_planets))
-
-        hsizer_edge.Add(edge_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_edge.Add(self.max_edge_planets, 1)
-        vsizer_setup_2.Add(hsizer_edge, 1, wx.EXPAND | wx.ALL)
-
-        vsizer_setup.Add(vsizer_setup_2, 1, wx.EXPAND | wx.ALL, 10)
-
-        hsizer_core = wx.BoxSizer(wx.HORIZONTAL)
-        core_txt = wx.StaticText(self, 0, "Keep core sectors")
-        self.rb_core_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
-        rb_core_no = wx.RadioButton(self, label="No")
-        rb_core_no.SetValue(True)
-
-        hsizer_core.Add(core_txt, 6)
-        hsizer_core.Add(self.rb_core_yes, 1)
-        hsizer_core.Add(rb_core_no, 1)
-        vsizer_setup.Add(hsizer_core, -1, wx.EXPAND | wx.ALL, 10)
-
-        hsizer_center = wx.BoxSizer(wx.HORIZONTAL)
-        center_txt = wx.StaticText(self, 0, "2-player: Disable hex 6 in centre")
-        self.rb_center_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
-        rb_center_no = wx.RadioButton(self, label="No")
-        rb_center_no.SetValue(True)
-
-        hsizer_center.Add(center_txt, 6)
-        hsizer_center.Add(self.rb_center_yes, 1)
-        hsizer_center.Add(rb_center_no, 1)
-        vsizer_setup.Add(hsizer_center, -1, wx.EXPAND | wx.ALL, 10)
-
-        hsizer_small = wx.BoxSizer(wx.HORIZONTAL)
-        small_txt = wx.StaticText(self, 0, "3-player: Smaller map")
-        self.rb_small_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
-        rb_small_no = wx.RadioButton(self, label="No")
-        rb_small_no.SetValue(True)
-
-        hsizer_small.Add(small_txt, 6)
-        hsizer_small.Add(self.rb_small_yes, 1)
-        hsizer_small.Add(rb_small_no, 1)
-        vsizer_setup.Add(hsizer_small, -1, wx.EXPAND | wx.ALL, 10)
 
         ##########################
         # HIDE COMPLICATED STUFF:
@@ -1347,73 +1458,33 @@ class MainFrame(wx.Frame):
         '''
         #############################
 
-        info = """
-        Methods:
-        - Planet Type Happiness: Search for maps that has similar happiness for all
-          planet types (i.e. minimize variance of happiness)
-        - Distribution: Search for maps with even distribution of planet types.
-        - Big clusters: Search for maps with large average cluster sizes
-        
-        Number of iterations: How many legal maps to evaluate
-        Illegal maps are rejected during the search, only legal maps are evaluated.
-        A legal map follow all the limitations given by:
-        - Maximum cluster size allowed
-        - Minimum distance between equal planets (not Gaia or Trans Dimentional)
-        - Maximum number of edge planets allowed for a planet type
-        NOTE: if you have too strong restrictions you might make an infinite loop
-              where it is never able to find a legal map.
-
-        Keep core sectors:
-          Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random
-            
-        2-player, Do not allow hex 6 in centre: Because few planets in this sector
-            
-        3-player, Smaller map: Use only two hexes in row 2
-        """
-
         ##############
-        #Info for hidden stuff:
+        # Info for hidden stuff:
         ###############
         '''
         Relevant neighbor radius: Used in the two first methods to define area of influence
-                    
+
         Parameters - Happiness method:
             - Terraform: how much happiness increases based on terraform cost of neighbours
             - Gaia: how much happiness increases with gaia planet as neighbour
             - Trans-Dim: how much happiness increases with trans-dim planet as neighbour
             - Range Factor: how the range to a neighbour effects the happiness
-        
+
         Parameters - Distribution method:
             - Distribution Type: 1.0 for planet density, 0.0 for planet types, 0.N for a mix
             - Planet Density and Type Ratio Dropoff Scale (0-inf):
               How bad it is to differ from optimal value. Lower number means less bad.         
-              
-        
-        
+
         '''
 
-        info_text = wx.StaticText(self, 1, info)
-        vsizer_info.Add(info_text, 1, wx.EXPAND | wx.ALL, 20)
-
-        hsizer_setup.Add(vsizer_setup, 1, wx.EXPAND)
-        hsizer_setup.Add(vsizer_info, 1, wx.EXPAND)
-
-        vsizer.Add(hsizer_setup, 0, wx.EXPAND)
-        self.SetSizer(vsizer)
-        self.Centre()
-        self.Show()
 
     def on_randomize(self, event):
-        n_players = int(self.num_players.GetValue())
+        n_players = int(self.num_players_options[self.num_player_box.GetSelection()])
         random_setup = RandomSetup(self, n_players)
         random_setup.Show(True)
 
     def on_make_map(self, event):
-        n_players = int(self.num_players.GetValue())
-        if n_players < 2 or n_players > 4:
-            self.num_players.SetValue(str(default_num_players))
-            self.on_error("Number of players must be 2, 3 or 4")
-            return
+        n_players = int(self.num_players_options[self.num_player_box.GetSelection()])
 
         keep_core = (True if self.rb_core_yes.GetValue() else False)
         disable_six_in_centre = (True if self.rb_center_yes.GetValue() else False)
@@ -1435,11 +1506,10 @@ class MainFrame(wx.Frame):
 
         method = self.method_box.GetSelection()
 
-        num_iteration = int(self.num_iterations.GetValue())
-        if num_iteration < 10:
-            self.num_iterations.SetValue(str(default_num_iterations))
-            self.on_error("Number of iterations has to be more than 9.")
-            return
+        num_iteration = 0
+        for i, btn in enumerate(self.num_iterations_btn):
+            if btn.GetValue() == True:
+                num_iteration = self.num_iterations[i]
 
         '''
         radius = int(self.radius.GetValue())
@@ -1449,23 +1519,21 @@ class MainFrame(wx.Frame):
             return
         '''
 
-        cluster_size = int(self.cluster_size.GetValue())
-        if cluster_size < 3:
-            self.cluster_size.SetValue(str(default_cluster_size))
-            self.on_error("Maximum cluster size must be greater than 2")
-            return
+        cluster_size = 0
+        for i, btn in enumerate(self.cluster_size_btn):
+            if btn.GetValue() == True:
+                cluster_size = self.cluster_size_btn[i]
 
-        min_neighbor_distance = int(self.min_neighbor_distance.GetValue())
-        if min_neighbor_distance > 4:
-            self.min_neighbor_distance.SetValue(default_min_neighbor_distance)
-            self.on_error("Minimum distance between planets of equal color can not be greater than 4")
-            return
+        min_neighbor_distance = 0
+        for i, btn in enumerate(self.min_neighbor_distance_btn):
+            print btn.GetValue()
+            if btn.GetValue() == True:
+                min_neighbor_distance = self.min_neighbor_distance[i]
 
-        max_edge_planets = int(self.max_edge_planets.GetValue())
-        if max_edge_planets < 1:
-            self.max_edge_planets.SetValue(default_max_edge_planets)
-            self.on_error("Maximum edge planets for a planet type must be at least 1")
-            return
+        max_edge_planets = 0
+        for i, btn in enumerate(self.max_edge_planets_btn):
+            if btn.GetValue() == True:
+                max_edge_planets = self.max_edge_planets[i]
 
         ################
         # Use of hidden parameters:
