@@ -1395,16 +1395,36 @@ class MainFrame(wx.Frame):
         hsizer_center.Add(rb_center_no, 1)
         vsizer_setup.Add(hsizer_center, 1, wx.EXPAND | wx.ALL, 5)
 
-        hsizer_small = wx.BoxSizer(wx.HORIZONTAL)
-        small_txt = wx.StaticText(self, 0, "3-player: Smaller map")
-        self.rb_small_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
-        rb_small_no = wx.RadioButton(self, label="No")
-        rb_small_no.SetValue(True)
+        hsizer_3p_type = wx.BoxSizer(wx.HORIZONTAL)
+        rb_3p_type_txt = wx.StaticText(self, 0, "3 player sector count")
+        hsizer_3p_type.Add(rb_3p_type_txt, 4, wx.EXPAND | wx.ALL, 5)
 
-        hsizer_small.Add(small_txt, 6, wx.EXPAND | wx.ALL, 5)
-        hsizer_small.Add(self.rb_small_yes, 1)
-        hsizer_small.Add(rb_small_no, 1)
-        vsizer_setup.Add(hsizer_small, 1, wx.EXPAND | wx.ALL, 5)
+        """
+        3-player:
+          type 0: 3-4-4, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+          type 1: 2-3-3, hex 1, 2, 3, 4, 5, 6, 7, 8
+          type 2: 3-2-3, hex 1, 2, 3, 4, 5, 6, 7, 8
+          type 3: 3-3-2, hex 1, 2, 3, 4, 5, 6, 7, 8
+          type 4: 3-3-3, hex 1, 2, 3, 4, 5_, 6_, 7_, 9, 10
+          type 5: 3-3-3, hex 1, 2, 3, 5_, 6, 7, 8, 9, 10
+          type 6: random between type 0-5
+          type 7: random between type 1-3
+          type 8: random between type 4-5
+        """
+        self.rb_3p_type = ["8", "9", "10", "Random"]
+        self.layout_3p_types = [7, 8, 0, 6]
+        self.rb_3p_type_btn = []
+        for i, value in enumerate(self.rb_3p_type):
+            if i == 0:
+                btn = wx.RadioButton(self, label=value, style=wx.RB_GROUP)
+            else:
+                btn = wx.RadioButton(self, label=value)
+            self.rb_3p_type_btn.append(btn)
+            hsizer_3p_type.Add(btn, 1)
+            if value == "Random":
+                btn.SetValue(True)
+
+        vsizer_setup.Add(hsizer_3p_type, 1, wx.EXPAND | wx.ALL, 5)
 
         btn_advanced = wx.Button(self, wx.ID_FILE, label="Advanced settings", size=(120, 40))
         self.Bind(wx.EVT_BUTTON, self.on_advanced, btn_advanced)
@@ -1448,7 +1468,9 @@ class MainFrame(wx.Frame):
                          ["Keep core sectors:",
                           "   Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random"],
                          ["2-player: Disable hex 6 in centre", "   Since there are few planets in this sector"],
-                         ["3-player: Smaller map", "   Use only two hexes in row 2"]]
+                         ["3-player sector count:",
+                          """   Number of sectors used in 3p.
+    For 8 and 9 it selects at random one of a few possible layouts."""]]
 
         for i, (header, description) in enumerate(settings_info):
             small_header = wx.StaticText(self, 1, header)
@@ -1520,11 +1542,15 @@ class MainFrame(wx.Frame):
         random_setup.Show(True)
 
     def on_make_map(self, event):
+        self.set_progress(0, 0, 0)
         n_players = int(self.num_players_options[self.num_player_box.GetSelection()])
 
         keep_core = (True if self.rb_core_yes.GetValue() else False)
         disable_six_in_centre = (True if self.rb_center_yes.GetValue() else False)
-        smaller_map = (True if self.rb_small_yes.GetValue() else False)
+        layout_type_3p = 0
+        for i, btn in enumerate(self.rb_3p_type_btn):
+            if btn.GetValue() == True:
+                layout_type_3p = self.layout_3p_types[i]
 
         if disable_six_in_centre:
             if n_players == 2:
@@ -1532,13 +1558,7 @@ class MainFrame(wx.Frame):
             else:
                 disable_six_in_centre = False
 
-        if smaller_map:
-            if n_players == 3:
-                smaller_map = True
-            else:
-                smaller_map = False
-
-        map = Map(n_players, True, keep_core, disable_six_in_centre, 6)
+        map = Map(n_players, True, keep_core, disable_six_in_centre, layout_type_3p)
 
         method = self.method_box.GetSelection()
 
@@ -1601,7 +1621,7 @@ class MainFrame(wx.Frame):
         map_setup = MapSetup(self, full_image_name)
         map_setup.Show(True)
 
-        self.set_progress(0, 0, 0)
+        #self.set_progress(0, 0, 0)
         self.abort = False
 
     def make_menu(self):
