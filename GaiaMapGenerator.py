@@ -1115,7 +1115,7 @@ GUI Stuff:
 
 class MainFrame(wx.Frame):
     def __init__(self, parent=None):
-        super(MainFrame, self).__init__(parent, title="Gaia Map Generator", size=(1300, 800))
+        super(MainFrame, self).__init__(parent, title="Gaia Map Generator", size=(1300, 810))
         self.default_font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
         self.bold_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
         self.make_menu()
@@ -1133,9 +1133,6 @@ class MainFrame(wx.Frame):
         hsizer_main = wx.BoxSizer(wx.HORIZONTAL)
         vsizer_player_info = wx.BoxSizer(wx.VERTICAL)
 
-        #players_info_text = wx.StaticText(self, -1, "Number of players")
-        #self.num_players = wx.TextCtrl(self, value=str(default_num_players))
-
         self.num_players_options = ["2", "3", "4"]
         self.num_player_box = wx.RadioBox(self, label="Number of players", choices=self.num_players_options)
 
@@ -1151,15 +1148,11 @@ class MainFrame(wx.Frame):
 
         self.enable_abort_btn(False)
 
-        #vsizer_player_info.Add(players_info_text, 1)
-        #vsizer_player_info.Add(self.num_players, 1)
-
         vsizer_progress = wx.BoxSizer(wx.VERTICAL)
         vsizer_progress.Add(self.progress, 1, wx.EXPAND | wx.ALL)
         vsizer_progress.Add(self.rejected, 1, wx.EXPAND | wx.ALL)
         vsizer_progress.Add(self.balance, 1, wx.EXPAND | wx.ALL)
 
-        # hsizer_main.Add(vsizer_player_info, 1, wx.EXPAND | wx.ALL, 10)
         hsizer_main.Add(self.num_player_box, 1, wx.EXPAND | wx.ALL, 10)
         hsizer_main.Add(btn_make_map, 2, wx.EXPAND | wx.ALL, 10)
         hsizer_main.Add(btn_randomize, 2, wx.EXPAND | wx.ALL, 10)
@@ -1217,9 +1210,9 @@ class MainFrame(wx.Frame):
                 str_value = str(value)
 
             if i == 0:
-                btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
+                btn = wx.RadioButton(self, label=str_value, style=wx.RB_GROUP)
             else:
-                btn = wx.RadioButton(self, label=str(value))
+                btn = wx.RadioButton(self, label=str_value)
             self.cluster_size_btn.append(btn)
             hsizer_cluster.Add(btn, 1)
             if value == 5:
@@ -1311,7 +1304,8 @@ class MainFrame(wx.Frame):
         vsizer_info.Add(method_header, 0, wx.EXPAND | wx.ALL, info_padding)
 
         methods_info = [["Planet Type Happiness:",
-                         "   Search for maps that has similar happiness for all planet types (i.e. minimize variance of happiness)"],
+                         """   Search for maps that has similar happiness for all planet types 
+   (i.e. minimize variance of happiness)"""],
                         ["Distribution:", "   Search for maps with even distribution of planet types."],
                         ["Big clusters:", "   Search for maps with large average cluster sizes"]]
 
@@ -1332,7 +1326,8 @@ class MainFrame(wx.Frame):
                            "   - Maximum cluster size allowed",
                            "   - Minimum distance between equal planets (not Gaia or Trans Dimentional)",
                            "   - Maximum number of edge planets allowed for a planet type",
-                           "   NOTE: if you have too strong restrictions you might make an infinite loop where it is never able to find a legal map."]],
+                           "   NOTE: if you have too strong restrictions you might make an infinite loop where it is",
+                           "         never able to find a legal map."]],
                          ["Keep core sectors:",
                           "   Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random"],
                          ["2-player: Disable hex 6 in centre", "   Since there are few planets in this sector"],
@@ -1522,11 +1517,10 @@ class MainFrame(wx.Frame):
         cluster_size = 0
         for i, btn in enumerate(self.cluster_size_btn):
             if btn.GetValue() == True:
-                cluster_size = self.cluster_size_btn[i]
+                cluster_size = self.cluster_size[i]
 
         min_neighbor_distance = 0
         for i, btn in enumerate(self.min_neighbor_distance_btn):
-            print btn.GetValue()
             if btn.GetValue() == True:
                 min_neighbor_distance = self.min_neighbor_distance[i]
 
