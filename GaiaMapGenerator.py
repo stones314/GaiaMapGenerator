@@ -1377,7 +1377,10 @@ class MainFrame(wx.Frame):
         core_txt = wx.StaticText(self, 0, "Keep core sectors")
         self.rb_core_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
         rb_core_no = wx.RadioButton(self, label="No")
-        rb_core_no.SetValue(self.not_keep_core)
+        if self.keep_core:
+            self.rb_core_yes.SetValue(True)
+        else:
+            rb_core_no.SetValue(True)
 
         hsizer_core.Add(core_txt, 6, wx.EXPAND | wx.ALL, 5)
         hsizer_core.Add(self.rb_core_yes, 1)
@@ -1388,7 +1391,10 @@ class MainFrame(wx.Frame):
         center_txt = wx.StaticText(self, 0, "2-player: Disable hex 6 in centre")
         self.rb_center_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
         rb_center_no = wx.RadioButton(self, label="No")
-        rb_center_no.SetValue(self.not_disable_6)
+        if self.disable_six_in_centre:
+            self.rb_center_yes.SetValue(True)
+        else:
+            rb_center_no.SetValue(True)
 
         hsizer_center.Add(center_txt, 6, wx.EXPAND | wx.ALL, 5)
         hsizer_center.Add(self.rb_center_yes, 1)
@@ -1493,7 +1499,40 @@ class MainFrame(wx.Frame):
         self.Show()
 
     def read_settings(self):
-        pass
+        self.num_players = int(self.num_players_options[self.num_player_box.GetSelection()])
+
+        self.keep_core = (True if self.rb_core_yes.GetValue() else False)
+        self.disable_six_in_centre = (True if self.rb_center_yes.GetValue() else False)
+        self.layout_type_3p = 0
+        for i, btn in enumerate(self.rb_3p_type_btn):
+            if btn.GetValue() == True:
+                self.layout_type_3p = self.layout_3p_types[i]
+
+        if self.disable_six_in_centre:
+            if self.num_players == 2:
+                self.disable_six_in_centre = True
+            else:
+                self.disable_six_in_centre = False
+
+        self.num_iteration = 0
+        for i, btn in enumerate(self.num_iterations_btn):
+            if btn.GetValue() == True:
+                self.num_iteration = self.num_iterations_opt[i]
+
+        self.cluster_size = 0
+        for i, btn in enumerate(self.cluster_size_btn):
+            if btn.GetValue() == True:
+                self.cluster_size = self.cluster_size_opt[i]
+
+        self.min_neighbor_distance = 0
+        for i, btn in enumerate(self.min_neighbor_distance_btn):
+            if btn.GetValue() == True:
+                self.min_neighbor_distance = self.min_neighbor_distance_opt[i]
+
+        self.max_edge_planets = 0
+        for i, btn in enumerate(self.max_edge_planets_btn):
+            if btn.GetValue() == True:
+                self.max_edge_planets = self.max_edge_planets_opt[i]
 
     def import_settings(self):
         settings_file = open(settings_path, "r")
@@ -1501,23 +1540,26 @@ class MainFrame(wx.Frame):
         for line in settings_file:
             exec(line)
 
+        settings_file.close()
+
     def save_settings(self):
         settings_file = open(settings_path, "w")
-        settings_file.write("self.num_players"+" = "+str(self.num_players))
-        settings_file.write("self.num_iterations" + " = " + str(self.num_iterations))
-        settings_file.write("self.cluster_size" + " = " + str(self.cluster_size))
-        settings_file.write("self.min_neighbor_distance" + " = " + str(self.min_neighbor_distance))
-        settings_file.write("self.max_edge_planets" + " = " + str(self.max_edge_planets))
-        settings_file.write("self.not_keep_core" + " = " + str(self.not_keep_core))
-        settings_file.write("self.not_disable_6" + " = " + str(self.not_disable_6))
-        settings_file.write("self.sector_count" + " = " + str(self.sector_count))
-        settings_file.write("self.terra_param" + " = " + str(self.terra_param))
-        settings_file.write("self.gaia_param" + " = " + str(self.gaia_param))
-        settings_file.write("self.trans_param" + " = " + str(self.trans_param))
-        settings_file.write("self.range_factor" + " = " + str(self.range_factor))
-        settings_file.write("self.distribution_param" + " = " + str(self.distribution_param))
-        settings_file.write("self.density_param" + " = " + str(self.density_param))
-        settings_file.write("self.ratio_param" + " = " + str(self.ratio_param))
+        settings_file.write("self.num_players"+" = "+str(self.num_players)+"\n")
+        settings_file.write("self.num_iterations" + " = " + str(self.num_iterations)+"\n")
+        settings_file.write("self.cluster_size" + " = " + str(self.cluster_size)+"\n")
+        settings_file.write("self.min_neighbor_distance" + " = " + str(self.min_neighbor_distance)+"\n")
+        settings_file.write("self.max_edge_planets" + " = " + str(self.max_edge_planets)+"\n")
+        settings_file.write("self.keep_core " + " = " + str(self.keep_core)+"\n")
+        settings_file.write("self.disable_six_in_centre" + " = " + str(self.disable_six_in_centre)+"\n")
+        settings_file.write("self.layout_3p_types" + " = " + str(self.layout_3p_types)+"\n")
+        settings_file.write("self.terra_param" + " = " + str(self.terra_param)+"\n")
+        settings_file.write("self.gaia_param" + " = " + str(self.gaia_param)+"\n")
+        settings_file.write("self.trans_param" + " = " + str(self.trans_param)+"\n")
+        settings_file.write("self.range_factor" + " = " + str(self.range_factor)+"\n")
+        settings_file.write("self.distribution_param" + " = " + str(self.distribution_param)+"\n")
+        settings_file.write("self.density_param" + " = " + str(self.density_param)+"\n")
+        settings_file.write("self.ratio_param" + " = " + str(self.ratio_param)+"\n")
+        settings_file.close()
 
     def reset_settings(self):
         default_settings_file = open(default_settings_path, "r")
@@ -1525,6 +1567,14 @@ class MainFrame(wx.Frame):
 
         for line in default_settings_file:
             settings_file.write(line)
+
+        default_settings_file.close()
+        settings_file.close()
+
+        self.Destroy()
+        frame = MainFrame()
+        frame.Show()
+
 
     def on_advanced(self, event):
         params = self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
@@ -1542,23 +1592,24 @@ class MainFrame(wx.Frame):
         random_setup.Show(True)
 
     def on_make_map(self, event):
+        self.read_settings()
         self.set_progress(0, 0, 0)
-        n_players = int(self.num_players_options[self.num_player_box.GetSelection()])
+        # n_players = int(self.num_players_options[self.num_player_box.GetSelection()])
+        #
+        # keep_core = (True if self.rb_core_yes.GetValue() else False)
+        # disable_six_in_centre = (True if self.rb_center_yes.GetValue() else False)
+        # layout_type_3p = 0
+        # for i, btn in enumerate(self.rb_3p_type_btn):
+        #     if btn.GetValue() == True:
+        #         layout_type_3p = self.layout_3p_types[i]
 
-        keep_core = (True if self.rb_core_yes.GetValue() else False)
-        disable_six_in_centre = (True if self.rb_center_yes.GetValue() else False)
-        layout_type_3p = 0
-        for i, btn in enumerate(self.rb_3p_type_btn):
-            if btn.GetValue() == True:
-                layout_type_3p = self.layout_3p_types[i]
+        # if disable_six_in_centre:
+        #     if n_players == 2:
+        #         disable_six_in_centre = True
+        #     else:
+        #         disable_six_in_centre = False
 
-        if disable_six_in_centre:
-            if n_players == 2:
-                disable_six_in_centre = True
-            else:
-                disable_six_in_centre = False
-
-        map = Map(n_players, True, keep_core, disable_six_in_centre, layout_type_3p)
+        map = Map(self.n_players, True, self.keep_core, self.disable_six_in_centre, self.layout_type_3p)
 
         method = self.method_box.GetSelection()
 
@@ -1567,20 +1618,20 @@ class MainFrame(wx.Frame):
             if btn.GetValue() == True:
                 num_iteration = self.num_iterations_opt[i]
 
-        cluster_size = 0
-        for i, btn in enumerate(self.cluster_size_btn):
-            if btn.GetValue() == True:
-                cluster_size = self.cluster_size_opt[i]
-
-        min_neighbor_distance = 0
-        for i, btn in enumerate(self.min_neighbor_distance_btn):
-            if btn.GetValue() == True:
-                min_neighbor_distance = self.min_neighbor_distance_opt[i]
-
-        max_edge_planets = 0
-        for i, btn in enumerate(self.max_edge_planets_btn):
-            if btn.GetValue() == True:
-                max_edge_planets = self.max_edge_planets_opt[i]
+        # cluster_size = 0
+        # for i, btn in enumerate(self.cluster_size_btn):
+        #     if btn.GetValue() == True:
+        #         cluster_size = self.cluster_size_opt[i]
+        #
+        # min_neighbor_distance = 0
+        # for i, btn in enumerate(self.min_neighbor_distance_btn):
+        #     if btn.GetValue() == True:
+        #         min_neighbor_distance = self.min_neighbor_distance_opt[i]
+        #
+        # max_edge_planets = 0
+        # for i, btn in enumerate(self.max_edge_planets_btn):
+        #     if btn.GetValue() == True:
+        #         max_edge_planets = self.max_edge_planets_opt[i]
 
         # terra_param = default_terra_param
         # gaia_param = default_gaia_param
@@ -1592,11 +1643,11 @@ class MainFrame(wx.Frame):
         # ratio_param = default_ratio_param
 
         map.set_method(method)
-        map.set_try_count(num_iteration)
+        map.set_try_count(self.num_iteration)
         #map.set_search_radius(radius)
-        map.set_max_cluster_size(cluster_size)
-        map.set_max_edge_planets(max_edge_planets)
-        map.set_minimum_equal_range(min_neighbor_distance)
+        map.set_max_cluster_size(self.cluster_size)
+        map.set_max_edge_planets(self.max_edge_planets)
+        map.set_minimum_equal_range(self.min_neighbor_distance)
 
         if method == 0:
             map.set_search_radius(2)
