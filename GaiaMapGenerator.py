@@ -1553,6 +1553,7 @@ class MainFrame(wx.Frame):
         settings_file.write("self.keep_core " + " = " + str(self.keep_core)+"\n")
         settings_file.write("self.disable_six_in_centre" + " = " + str(self.disable_six_in_centre)+"\n")
         settings_file.write("self.layout_3p_types" + " = " + str(self.layout_3p_types)+"\n")
+        settings_file.write("self.radius" + " = " + str(self.radius) + "\n")
         settings_file.write("self.terra_param" + " = " + str(self.terra_param)+"\n")
         settings_file.write("self.gaia_param" + " = " + str(self.gaia_param)+"\n")
         settings_file.write("self.trans_param" + " = " + str(self.trans_param)+"\n")
@@ -1577,13 +1578,13 @@ class MainFrame(wx.Frame):
         frame.Show()
 
     def on_advanced(self, event):
-        params = self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
+        params = self.radius, self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
                  self.distribution_param, self.density_param, self.ratio_param
         advanced_settings = AdvancedSettings(self, params)
         advanced_settings.Show(True)
 
     def set_params(self, params):
-        self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
+        self.radius, self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
         self.distribution_param, self.density_param, self.ratio_param = params
 
     def on_randomize(self, event):
@@ -1594,71 +1595,28 @@ class MainFrame(wx.Frame):
     def on_make_map(self, event):
         self.read_settings()
         self.set_progress(0, 0, 0)
-        # n_players = int(self.num_players_options[self.num_player_box.GetSelection()])
-        #
-        # keep_core = (True if self.rb_core_yes.GetValue() else False)
-        # disable_six_in_centre = (True if self.rb_center_yes.GetValue() else False)
-        # layout_type_3p = 0
-        # for i, btn in enumerate(self.rb_3p_type_btn):
-        #     if btn.GetValue() == True:
-        #         layout_type_3p = self.layout_3p_types[i]
-
-        # if disable_six_in_centre:
-        #     if n_players == 2:
-        #         disable_six_in_centre = True
-        #     else:
-        #         disable_six_in_centre = False
 
         map = Map(self.num_players, True, self.keep_core, self.disable_six_in_centre, self.layout_type_3p)
 
         method = self.method_box.GetSelection()
 
-        num_iteration = 0
-        for i, btn in enumerate(self.num_iterations_btn):
-            if btn.GetValue() == True:
-                num_iteration = self.num_iterations_opt[i]
-
-        # cluster_size = 0
-        # for i, btn in enumerate(self.cluster_size_btn):
-        #     if btn.GetValue() == True:
-        #         cluster_size = self.cluster_size_opt[i]
-        #
-        # min_neighbor_distance = 0
-        # for i, btn in enumerate(self.min_neighbor_distance_btn):
-        #     if btn.GetValue() == True:
-        #         min_neighbor_distance = self.min_neighbor_distance_opt[i]
-        #
-        # max_edge_planets = 0
-        # for i, btn in enumerate(self.max_edge_planets_btn):
-        #     if btn.GetValue() == True:
-        #         max_edge_planets = self.max_edge_planets_opt[i]
-
-        # terra_param = default_terra_param
-        # gaia_param = default_gaia_param
-        # trans_param = default_trans_param
-        # range_factor = default_range_factor
-        #
-        # nearness_param = default_nearness_param
-        # density_param = default_density_param
-        # ratio_param = default_ratio_param
-
         map.set_method(method)
         map.set_try_count(self.num_iteration)
-        #map.set_search_radius(radius)
+        map.set_search_radius(self.radius)
         map.set_max_cluster_size(self.cluster_size)
         map.set_max_edge_planets(self.max_edge_planets)
         map.set_minimum_equal_range(self.min_neighbor_distance)
 
         if method == 0:
-            map.set_search_radius(2)
+            #map.set_search_radius(2)
             map.set_method_0_params(self.terra_param, self.gaia_param, self.trans_param, self.range_factor)
             self.quality_description = "Variance"
         elif method == 1:
-            map.set_search_radius(3)
+            #map.set_search_radius(3)
             map.set_method_1_params(self.distribution_param, self.density_param, self.ratio_param)
             self.quality_description = "Quality"
         elif method == 2:
-            map.set_search_radius(2)
+            #map.set_search_radius(2)
             self.quality_description = "Av. size"
 
         self.enable_abort_btn(True)
@@ -1927,30 +1885,30 @@ class AdvancedSettings(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self.SetFont(self.default_font)
 
-        self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
+        self.radius, self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
                  self.distribution_param, self.density_param, self.ratio_param = params
 
         hsizer_overall = wx.BoxSizer(wx.HORIZONTAL)
         vsizer_settings = wx.BoxSizer(wx.VERTICAL)
         vsizer_info = wx.BoxSizer(wx.VERTICAL)
 
-        # hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        # radius_txt = wx.StaticText(self, 0, "Relevant neighbor radius")
-        # hsizer.Add(radius_txt, 4, wx.EXPAND | wx.ALL, 5)
-        #
-        # self.radius = [1, 2, 3]
-        # self.radius_btn = []
-        # for i, value in enumerate(self.radius):
-        #     if i == 0:
-        #         btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
-        #     else:
-        #         btn = wx.RadioButton(self, label=str(value))
-        #     self.radius_btn.append(btn)
-        #     hsizer.Add(btn, 1)
-        #     if value == self.radius_param:
-        #         btn.SetValue(True)
-        #
-        # vsizer_settings.Add(hsizer, 0, wx.EXPAND | wx.ALL, 10)
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        radius_txt = wx.StaticText(self, 0, "Relevant neighbor radius")
+        hsizer.Add(radius_txt, 4, wx.EXPAND | wx.ALL, 5)
+
+        self.radius_opt = [1, 2, 3]
+        self.radius_btn = []
+        for i, value in enumerate(self.radius_opt):
+            if i == 0:
+                btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
+            else:
+                btn = wx.RadioButton(self, label=str(value))
+            self.radius_btn.append(btn)
+            hsizer.Add(btn, 1)
+            if value == self.radius:
+                btn.SetValue(True)
+
+        vsizer_settings.Add(hsizer, 0, wx.EXPAND | wx.ALL, 10)
 
         happy_header = wx.StaticText(self, 1, "Planet Type Happiness Settings")
         happy_header.SetFont(header_font)
@@ -2035,18 +1993,18 @@ based on planet density, planet type or both."""
         # Information text
         info_padding = 5
 
-        # settings_header = wx.StaticText(self, 1, "General settings")
-        # settings_header.SetFont(header_font)
-        # vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
-        #
-        # info = [["Relevant neighbor radius:", "   Used in the two first methods to define area of influence"]]
-        #
-        # for method, description in info:
-        #     small_header = wx.StaticText(self, 1, method)
-        #     small_header.SetFont(small_header_font)
-        #     vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
-        #     info_text = wx.StaticText(self, 1, description)
-        #     vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+        settings_header = wx.StaticText(self, 1, "General settings")
+        settings_header.SetFont(header_font)
+        vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
+
+        info = [["Relevant neighbor radius:", "   Used in the two first methods to define area of influence"]]
+
+        for method, description in info:
+            small_header = wx.StaticText(self, 1, method)
+            small_header.SetFont(small_header_font)
+            vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+            info_text = wx.StaticText(self, 1, description)
+            vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
 
         settings_header = wx.StaticText(self, 1, "Planet Type Happiness Settings")
         settings_header.SetFont(header_font)
@@ -2100,10 +2058,10 @@ based on planet density, planet type or both."""
         self.Show()
 
     def on_apply(self, event=None):
-        # radius_param = 0
-        # for i, btn in enumerate(self.radius_btn):
-        #     if btn.GetValue() == True:
-        #         radius_param = self.radius[i]
+        radius_param = 0
+        for i, btn in enumerate(self.radius_btn):
+            if btn.GetValue() == True:
+                radius_param = self.radius_opt[i]
 
         terra_param = [self.happy_sliders[0].GetValue(), self.happy_sliders[1].GetValue(),
                        self.happy_sliders[2].GetValue(), self.happy_sliders[3].GetValue()]
@@ -2121,7 +2079,7 @@ based on planet density, planet type or both."""
         if ratio_param > 20:
             self.on_error("It is not reccomended with a Type Ratio Dropoff Scale of more than 20")
 
-        params = terra_param, gaia_param, trans_param, range_factor,\
+        params = radius_param, terra_param, gaia_param, trans_param, range_factor,\
                  distribution_param, density_param, ratio_param
 
         self.parent.set_params(params)
