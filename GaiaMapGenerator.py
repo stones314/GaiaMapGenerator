@@ -3,6 +3,7 @@ import wx.grid
 from PIL import Image
 import random
 import copy
+import math as m
 import sys
 
 # sys.stdout = open('my_stdout.log', 'w')
@@ -183,7 +184,7 @@ def get_stats(values):
         diff = val - avg
         var = var + diff * diff
     var = var / n
-    return [avg, var, minv, maxv]
+    return [avg, m.sqrt(var), minv, maxv]
 
 
 def get_color_dist(planet1, planet2):
@@ -511,7 +512,7 @@ class Map(object):
         self.keep_core_sectors = keep_core_sectors
         self.disable_6_as_centre_in_2p = disable_6_as_centre_in_2p
         self.layout_type_3p = layout_type_3p
-        self.max_rejected_rotations = 10000
+        self.max_rejected_rotations = 1000000
 
         """
           type 6: random between type 0-5
@@ -1149,7 +1150,7 @@ class Map(object):
 
     def reset_best_map_value(self):
         if self.is_better_balance(-1.0):
-            self.best_balance = 10000.0
+            self.best_balance = 1000000.0
         else:
             self.best_balance = 0.0
         self.rejected_maps = 0
@@ -1243,6 +1244,14 @@ class MainFrame(wx.Frame):
         hsizer_main = wx.BoxSizer(wx.HORIZONTAL)
         vsizer_player_info = wx.BoxSizer(wx.VERTICAL)
 
+        self.terra_param = [100, 100, 0, 100]
+        self.gaia_param = 100
+        self.trans_param = 0
+        self.range_factor = [100, 100, 80, 5]
+        self.distribution_param = 0
+        self.density_param = 40
+        self.ratio_param = 7
+
         self.num_players_options = ["2", "3", "4"]
         self.num_player_box = wx.RadioBox(self, label="Number of players", choices=self.num_players_options)
 
@@ -1290,7 +1299,7 @@ class MainFrame(wx.Frame):
         vsizer_setup.Add(hsizer_name, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_iterations = wx.BoxSizer(wx.HORIZONTAL)
-        num_iterations_txt = wx.StaticText(self, 0, "Number of iterations")
+        num_iterations_txt = wx.StaticText(self, 0, "Number of maps to evaluate")
         hsizer_iterations.Add(num_iterations_txt, 4, wx.EXPAND | wx.ALL, 5)
 
         self.num_iterations = [10, 100, 1000, 10000]
@@ -1430,14 +1439,14 @@ class MainFrame(wx.Frame):
         settings_header.SetFont(header_font)
         vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
 
-        settings_info = [["Number of iterations:",
+        settings_info = [["Number of maps to evaluate:",
                           ["   How many legal maps to evaluate (Illegal maps are rejected during the search).",
                            "   A legal map follow all the limitations given by",
-                           "   - Maximum cluster size allowed",
-                           "   - Minimum distance between equal planets (not Gaia or Trans Dimentional)",
-                           "   - Maximum number of edge planets allowed for a planet type",
-                           "   NOTE: if you have too strong restrictions you might make an infinite loop where it is",
-                           "         never able to find a legal map."]],
+                           "    - Maximum cluster size allowed",
+                           "    - Minimum distance between equal planets (not Gaia or Trans Dimentional)",
+                           "    - Maximum number of edge planets allowed for a planet type",
+                           """   NOTE: if you have too strong restrictions you might make an infinite loop where 
+    it is never able to find a legal map."""]],
                          ["Keep core sectors:",
                           "   Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random"],
                          ["2-player: Disable hex 6 in centre", "   Since there are few planets in this sector"],
@@ -1464,124 +1473,14 @@ class MainFrame(wx.Frame):
         self.Show()
 
     def on_advanced(self, event):
-        pass
-        '''
-        hsizer_radius = wx.BoxSizer(wx.HORIZONTAL)
-        radius_txt = wx.StaticText(self, 0, "Relevant neighbor radius")
-        self.radius = wx.TextCtrl(self, value=str(default_radius))
+        params = self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
+                 self.distribution_param, self.density_param, self.ratio_param
+        advanced_settings = AdvancedSettings(self, params)
+        advanced_settings.Show(True)
 
-        hsizer_radius.Add(radius_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_radius.Add(self.radius, 1)
-        vsizer_setup_2.Add(hsizer_radius, 1, wx.EXPAND | wx.ALL)
-        '''
-
-        ##########################
-        # HIDE COMPLICATED STUFF:
-        ##########################
-        '''
-        # Neighbors method
-        vsizer_neighbors = wx.BoxSizer(wx.VERTICAL)
-        method_neighbor_txt = wx.StaticText(self, 0, "Happiness method")
-        method_neighbor_txt.SetFont(self.bold_font)
-        vsizer_neighbors.Add(method_neighbor_txt, 1, wx.EXPAND | wx.ALL, 5)
-
-        hsizer_terra = wx.BoxSizer(wx.HORIZONTAL)
-        terra_txt = wx.StaticText(self, 0, "Terraform steps [0, 1, 2, 3]:")
-        self.terra_home = wx.TextCtrl(self, value=str(default_terra_param[0]), size=(50, -1))
-        self.terra_1 = wx.TextCtrl(self, value=str(default_terra_param[1]), size=(50, -1))
-        self.terra_2 = wx.TextCtrl(self, value=str(default_terra_param[2]), size=(50, -1))
-        self.terra_3 = wx.TextCtrl(self, value=str(default_terra_param[3]), size=(50, -1))
-
-        hsizer_terra.Add(terra_txt, 1, wx.EXPAND | wx.ALL, 5)
-        hsizer_terra.Add(self.terra_home, -1)
-        hsizer_terra.Add(self.terra_1, -1)
-        hsizer_terra.Add(self.terra_2, -1)
-        hsizer_terra.Add(self.terra_3, -1)
-        vsizer_neighbors.Add(hsizer_terra, 1, wx.EXPAND | wx.ALL, 5)
-
-        hsizer_gaia = wx.BoxSizer(wx.HORIZONTAL)
-        gaia_txt = wx.StaticText(self, 0, "Gaia:")
-        self.gaia_param = wx.TextCtrl(self, value=str(default_gaia_param))
-
-        hsizer_gaia.Add(gaia_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_gaia.Add(self.gaia_param, 1)
-        vsizer_neighbors.Add(hsizer_gaia, 1, wx.EXPAND | wx.ALL, 5)
-
-        hsizer_trans = wx.BoxSizer(wx.HORIZONTAL)
-        trans_txt = wx.StaticText(self, 0, "Trans-Dim:")
-        self.trans_param = wx.TextCtrl(self, value=str(default_trans_param))
-
-        hsizer_trans.Add(trans_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_trans.Add(self.trans_param, 1)
-        vsizer_neighbors.Add(hsizer_trans, 1, wx.EXPAND | wx.ALL, 5)
-
-        hsizer_range = wx.BoxSizer(wx.HORIZONTAL)
-        range_txt = wx.StaticText(self, 0, "Range Factor [1, 2, 3]:")
-        self.range_1 = wx.TextCtrl(self, value=str(default_range_factor[1]), size=(50, -1))
-        self.range_2 = wx.TextCtrl(self, value=str(default_range_factor[2]), size=(50, -1))
-        self.range_3 = wx.TextCtrl(self, value=str(default_range_factor[3]), size=(50, -1))
-
-        hsizer_range.Add(range_txt, 1, wx.EXPAND | wx.ALL, 5)
-        hsizer_range.Add(self.range_1, -1)
-        hsizer_range.Add(self.range_2, -1)
-        hsizer_range.Add(self.range_3, -1)
-        vsizer_neighbors.Add(hsizer_range, 1, wx.EXPAND | wx.ALL, 5)
-
-        vsizer_setup.Add(vsizer_neighbors, 1, wx.EXPAND | wx.ALL, 5)
-
-        # Distribution method
-        vsizer_distribution = wx.BoxSizer(wx.VERTICAL)
-        method_distribution_txt = wx.StaticText(self, 0, "Distribution method")
-        method_distribution_txt.SetFont(self.bold_font)
-        vsizer_distribution.Add(method_distribution_txt, 1, wx.EXPAND | wx.ALL, 5)
-
-        hsizer_nearness = wx.BoxSizer(wx.HORIZONTAL)
-        nearness_txt = wx.StaticText(self, 0, "Distribution Type Weight:")
-        self.nearness_param = wx.TextCtrl(self, value=str(default_nearness_param))
-
-        hsizer_nearness.Add(nearness_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_nearness.Add(self.nearness_param, 1)
-        vsizer_distribution.Add(hsizer_nearness, 1, wx.EXPAND | wx.ALL, 5)
-
-        hsizer_density = wx.BoxSizer(wx.HORIZONTAL)
-        density_txt = wx.StaticText(self, 0, "Planet Density Dropoff Scale:")
-        self.density_param = wx.TextCtrl(self, value=str(default_density_param))
-
-        hsizer_density.Add(density_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_density.Add(self.density_param, 1)
-        vsizer_distribution.Add(hsizer_density, 1, wx.EXPAND | wx.ALL, 5)
-
-        hsizer_ratio = wx.BoxSizer(wx.HORIZONTAL)
-        ratio_txt = wx.StaticText(self, 0, "Type Ratio Dropoff Scale:")
-        self.ratio_param = wx.TextCtrl(self, value=str(default_ratio_param))
-
-        hsizer_ratio.Add(ratio_txt, 3, wx.EXPAND | wx.ALL, 5)
-        hsizer_ratio.Add(self.ratio_param, 1)
-        vsizer_distribution.Add(hsizer_ratio, 1, wx.EXPAND | wx.ALL, 5)
-
-        vsizer_setup.Add(vsizer_distribution, 1, wx.EXPAND | wx.ALL, 5)
-        '''
-        #############################
-
-        ##############
-        # Info for hidden stuff:
-        ###############
-        '''
-        Relevant neighbor radius: Used in the two first methods to define area of influence
-
-        Parameters - Happiness method:
-            - Terraform: how much happiness increases based on terraform cost of neighbours
-            - Gaia: how much happiness increases with gaia planet as neighbour
-            - Trans-Dim: how much happiness increases with trans-dim planet as neighbour
-            - Range Factor: how the range to a neighbour effects the happiness
-
-        Parameters - Distribution method:
-            - Distribution Type: 1.0 for planet density, 0.0 for planet types, 0.N for a mix
-            - Planet Density and Type Ratio Dropoff Scale (0-inf):
-              How bad it is to differ from optimal value. Lower number means less bad.         
-
-        '''
-
+    def set_params(self, params):
+        self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
+        self.distribution_param, self.density_param, self.ratio_param = params
 
     def on_randomize(self, event):
         n_players = int(self.num_players_options[self.num_player_box.GetSelection()])
@@ -1616,14 +1515,6 @@ class MainFrame(wx.Frame):
             if btn.GetValue() == True:
                 num_iteration = self.num_iterations[i]
 
-        '''
-        radius = int(self.radius.GetValue())
-        if radius < 1 or radius > 3:
-            self.radius.SetValue(str(default_radius))
-            self.on_error("Radius must be between 1 and 3")
-            return
-        '''
-
         cluster_size = 0
         for i, btn in enumerate(self.cluster_size_btn):
             if btn.GetValue() == True:
@@ -1639,54 +1530,14 @@ class MainFrame(wx.Frame):
             if btn.GetValue() == True:
                 max_edge_planets = self.max_edge_planets[i]
 
-        ################
-        # Use of hidden parameters:
-        ################
-        '''
-        terra_param = [float(self.terra_home.GetValue()), float(self.terra_1.GetValue()),
-                       float(self.terra_2.GetValue()), float(self.terra_3.GetValue())]
-        gaia_param = float(self.gaia_param.GetValue())
-        trans_param = float(self.trans_param.GetValue())
-        range_factor = [1.0, float(self.range_1.GetValue()),
-                        float(self.range_2.GetValue()), float(self.range_3.GetValue())]
-
-        neighbor_params = copy.deepcopy(terra_param)
-        neighbor_params.append(gaia_param)
-        neighbor_params.append(trans_param)
-        neighbor_params.extend(range_factor)
-
-        for param in neighbor_params:
-            if param > 1 or param < 0:
-                self.on_error("All parameters within the Neighbor Method must be between 0 and 1")
-                return
-
-        nearness_param = float(self.nearness_param.GetValue())
-
-        if nearness_param < 0 or nearness_param > 1:
-            self.on_error("Nearness weight must be between 0 and 1")
-            return
-
-        density_param = float(self.density_param.GetValue())
-
-        if density_param < 0:
-            self.on_error("Planet Density Dropoff Scale must be greater than 0")
-            return
-
-        ratio_param = float(self.ratio_param.GetValue())
-
-        if ratio_param < 0:
-            self.on_error("Type Ratio Dropoff Scale must be greater than 0")
-            return
-        '''
-        # Using default params instead of entered for hidden stuff:
-        terra_param = default_terra_param
-        gaia_param = default_gaia_param
-        trans_param = default_trans_param
-        range_factor = default_range_factor
-
-        nearness_param = default_nearness_param
-        density_param = default_density_param
-        ratio_param = default_ratio_param
+        # terra_param = default_terra_param
+        # gaia_param = default_gaia_param
+        # trans_param = default_trans_param
+        # range_factor = default_range_factor
+        #
+        # nearness_param = default_nearness_param
+        # density_param = default_density_param
+        # ratio_param = default_ratio_param
 
         map.set_method(method)
         map.set_try_count(num_iteration)
@@ -1697,11 +1548,11 @@ class MainFrame(wx.Frame):
 
         if method == 0:
             map.set_search_radius(2)
-            map.set_method_0_params(terra_param, gaia_param, trans_param, range_factor)
+            map.set_method_0_params(self.terra_param, self.gaia_param, self.trans_param, self.range_factor)
             self.quality_description = "Variance"
         elif method == 1:
             map.set_search_radius(3)
-            map.set_method_1_params(nearness_param, density_param, ratio_param)
+            map.set_method_1_params(self.distribution_param, self.density_param, self.ratio_param)
             self.quality_description = "Quality"
         elif method == 2:
             map.set_search_radius(2)
@@ -1958,6 +1809,217 @@ class RandomSetup(wx.Frame):
         dc.Clear()
         bmp = wx.Bitmap(background_path)
         dc.DrawBitmap(bmp, 0, 0)
+
+class AdvancedSettings(wx.Frame):
+    def __init__(self, parent, params):
+        super(AdvancedSettings, self).__init__(parent, title="Advanced Settings", size=(1000, 850))
+        self.parent = parent
+        ico = wx.Icon('images/tech_icon.ico', wx.BITMAP_TYPE_ICO)
+        self.SetIcon(ico)
+        self.SetBackgroundColour("#FFFFFF")
+
+        self.default_font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
+        header_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
+        small_header_font = wx.Font(12, wx.DECORATIVE, wx.ITALIC, wx.NORMAL)
+        self.Bind(wx.EVT_CLOSE, self.on_close)
+        self.SetFont(self.default_font)
+
+        self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
+                 self.distribution_param, self.density_param, self.ratio_param = params
+
+        hsizer_overall = wx.BoxSizer(wx.HORIZONTAL)
+        vsizer_settings = wx.BoxSizer(wx.VERTICAL)
+        vsizer_info = wx.BoxSizer(wx.VERTICAL)
+
+        # hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        # radius_txt = wx.StaticText(self, 0, "Relevant neighbor radius")
+        # hsizer.Add(radius_txt, 4, wx.EXPAND | wx.ALL, 5)
+        #
+        # self.radius = [1, 2, 3]
+        # self.radius_btn = []
+        # for i, value in enumerate(self.radius):
+        #     if i == 0:
+        #         btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
+        #     else:
+        #         btn = wx.RadioButton(self, label=str(value))
+        #     self.radius_btn.append(btn)
+        #     hsizer.Add(btn, 1)
+        #     if value == self.radius_param:
+        #         btn.SetValue(True)
+        #
+        # vsizer_settings.Add(hsizer, 0, wx.EXPAND | wx.ALL, 10)
+
+        happy_header = wx.StaticText(self, 1, "Planet Type Happiness Settings")
+        happy_header.SetFont(header_font)
+        vsizer_settings.Add(happy_header, 0, wx.EXPAND | wx.ALL, 10)
+
+        txt = """This method loops over all planets and sums up each 
+planet's happiness based on its neighbors. The goal is 
+that each planet type in sum has the same happiness"""
+        text = wx.StaticText(self, 0, txt)
+        vsizer_settings.Add(text, 0, wx.EXPAND | wx.ALL, 10)
+
+        vsizer_sliders = wx.BoxSizer(wx.VERTICAL)
+        slider_padding = 0
+        sliders = [["Terraform step 0 (Home):", 0, 100, self.terra_param[0]],
+                   ["Terraform step 1:", 0, 100, self.terra_param[1]],
+                   ["Terraform step 2:", 0, 100, self.terra_param[2]],
+                   ["Terraform step 3:", 0, 100, self.terra_param[3]],
+                   ["Gaia planet:", 0, 100, self.gaia_param],
+                   ["Trans-Dim planet:", 0, 100, self.trans_param],
+                   ["Neighbor range 1:", 0, 100, self.range_factor[1]],
+                   ["Neighbor range 2:", 0, 100, self.range_factor[2]],
+                   ["Neighbor range 3:", 0, 100, self.range_factor[3]]]
+
+        self.happy_sliders = []
+
+        for txt, min, max, default in sliders:
+            hsizer = wx.BoxSizer(wx.HORIZONTAL)
+
+            text = wx.StaticText(self, 0, txt)
+            slider = wx.Slider(self, value=default, minValue=float(min), maxValue=float(max),
+                               style=wx.SL_HORIZONTAL|wx.SL_VALUE_LABEL)
+            self.happy_sliders.append(slider)
+            hsizer.Add(text, 1, wx.EXPAND | wx.ALL)
+            hsizer.Add(slider, 1, wx.EXPAND | wx.ALL)
+            vsizer_sliders.Add(hsizer, 0, wx.EXPAND | wx.ALL, slider_padding)
+
+        vsizer_settings.Add(vsizer_sliders, 0, wx.EXPAND | wx.ALL, 10)
+
+        dist_header = wx.StaticText(self, 1, "Distribution Settings")
+        dist_header.SetFont(header_font)
+        vsizer_settings.Add(dist_header, 0, wx.EXPAND | wx.ALL, 10)
+
+        txt = """This method tries to get an equal distribution of planets,
+based on planet density, planet type or both."""
+        text = wx.StaticText(self, 0, txt)
+        vsizer_settings.Add(text, 0, wx.EXPAND | wx.ALL, 10)
+
+        vsizer_sliders = wx.BoxSizer(wx.VERTICAL)
+        sliders = [["Distribution Type Weight:", 0, 100, self.distribution_param],
+                   ["Planet Density Dropoff Scale:", 0, 100, self.density_param],
+                   ["Type Ratio Dropoff Scale:", 0, 100, self.ratio_param]]
+
+        self.density_sliders = []
+
+        for txt, min, max, default in sliders:
+            hsizer = wx.BoxSizer(wx.HORIZONTAL)
+
+            text = wx.StaticText(self, 0, txt)
+            slider = wx.Slider(self, value=default, minValue=float(min), maxValue=float(max),
+                               style=wx.SL_HORIZONTAL|wx.SL_VALUE_LABEL)
+            self.density_sliders.append(slider)
+            hsizer.Add(text, 1, wx.EXPAND | wx.ALL)
+            hsizer.Add(slider, 1, wx.EXPAND | wx.ALL)
+            vsizer_sliders.Add(hsizer, 0, wx.EXPAND | wx.ALL, slider_padding)
+
+        vsizer_settings.Add(vsizer_sliders, 0, wx.EXPAND | wx.ALL, 10)
+
+        btn_apply = wx.Button(self, wx.ID_APPLY, label="Apply", size=(120, 40))
+        self.Bind(wx.EVT_BUTTON, self.on_apply, btn_apply)
+
+        vsizer_settings.Add(btn_apply, 0, wx.EXPAND | wx.ALL, 10)
+
+        # Information text
+        info_padding = 5
+
+        # settings_header = wx.StaticText(self, 1, "General settings")
+        # settings_header.SetFont(header_font)
+        # vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
+        #
+        # info = [["Relevant neighbor radius:", "   Used in the two first methods to define area of influence"]]
+        #
+        # for method, description in info:
+        #     small_header = wx.StaticText(self, 1, method)
+        #     small_header.SetFont(small_header_font)
+        #     vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+        #     info_text = wx.StaticText(self, 1, description)
+        #     vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+
+        settings_header = wx.StaticText(self, 1, "Planet Type Happiness Settings")
+        settings_header.SetFont(header_font)
+        vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
+
+        info = [["Terraform:",
+                 """   how much the sum of happiness increases for a certain terraforming
+   cost as a neighbour. Each terraforming cost has its own value."""],
+                ["Gaia:",
+                 """   how much the sum of happiness increases with a gaia planet 
+   as neighbour"""],
+                ["Trans-Dim:",
+                 """   how much the sum of happiness increases with a trans-dim
+   planet as neighbour"""],
+                ["Range Factor:",
+                 """   how the range to a neighbour effects the happiness. 
+   Happiness value for each planet is divided by the range factor 
+   for the given distance"""]]
+
+        for method, description in info:
+            small_header = wx.StaticText(self, 1, method)
+            small_header.SetFont(small_header_font)
+            vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+            info_text = wx.StaticText(self, 1, description)
+            vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+
+        settings_header = wx.StaticText(self, 1, "Distribution Settings")
+        settings_header.SetFont(header_font)
+        vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
+
+        info = [["Distribution Type:",
+                 """    - 100 will optimize for planet density
+    - 0 will optimize for planet types.
+    - A value in between will optimize for a mix"""],
+                ["Planet Density and Type Ratio Dropoff Scale (0-100):",
+                 """   How bad it is to differ from optimal value. A lower number gives 
+   a smaller punishement for having a value outside the optimal."""]]
+
+        for method, description in info:
+            small_header = wx.StaticText(self, 1, method)
+            small_header.SetFont(small_header_font)
+            vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+            info_text = wx.StaticText(self, 1, description)
+            vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+
+        hsizer_overall.Add(vsizer_settings, 1, wx.EXPAND, 40)
+        hsizer_overall.Add(vsizer_info, 1, wx.EXPAND, 20)
+        self.SetSizer(hsizer_overall)
+
+        self.Centre()
+        self.Show()
+
+    def on_apply(self, event):
+        # radius_param = 0
+        # for i, btn in enumerate(self.radius_btn):
+        #     if btn.GetValue() == True:
+        #         radius_param = self.radius[i]
+
+        terra_param = [self.happy_sliders[0].GetValue(), self.happy_sliders[1].GetValue(),
+                       self.happy_sliders[2].GetValue(), self.happy_sliders[3].GetValue()]
+        gaia_param = self.happy_sliders[4].GetValue()
+        trans_param = self.happy_sliders[5].GetValue()
+        range_factor = [100, self.happy_sliders[6].GetValue(),
+                        self.happy_sliders[7].GetValue(), self.happy_sliders[8].GetValue()]
+
+        distribution_param = self.density_sliders[0].GetValue()/100.
+
+        density_param = self.density_sliders[1].GetValue()
+
+        ratio_param = self.density_sliders[2].GetValue()
+
+        if ratio_param > 20:
+            self.on_error("It is not reccomended with a Type Ratio Dropoff Scale of more than 20")
+
+        params = terra_param, gaia_param, trans_param, range_factor,\
+                 distribution_param, density_param, ratio_param
+
+        self.parent.set_params(params)
+        self.on_close()
+
+    def on_error(self, error_message):
+        PopupWindow(self, error_message, "WARNING", (300, 200))
+
+    def on_close(self, event=None):
+        self.Destroy()
 
 
 class PopupWindow(wx.PopupWindow):
