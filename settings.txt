@@ -6,6 +6,7 @@ self.max_edge_planets = 2
 self.keep_core = False
 self.disable_six_in_centre = False
 self.layout_3p_types= 8
+self.radius = 2
 self.terra_param = [100, 100, 0, 100]
 self.gaia_param = 100
 self.trans_param = 0
