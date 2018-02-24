@@ -1543,6 +1543,7 @@ class MainFrame(wx.Frame):
         settings_file.close()
 
     def save_settings(self):
+        self.read_settings()
         settings_file = open(settings_path, "w")
         settings_file.write("self.num_players"+" = "+str(self.num_players)+"\n")
         settings_file.write("self.num_iterations" + " = " + str(self.num_iterations)+"\n")
@@ -1574,7 +1575,6 @@ class MainFrame(wx.Frame):
         self.Destroy()
         frame = MainFrame()
         frame.Show()
-
 
     def on_advanced(self, event):
         params = self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
@@ -1609,7 +1609,7 @@ class MainFrame(wx.Frame):
         #     else:
         #         disable_six_in_centre = False
 
-        map = Map(self.n_players, True, self.keep_core, self.disable_six_in_centre, self.layout_type_3p)
+        map = Map(self.num_players, True, self.keep_core, self.disable_six_in_centre, self.layout_type_3p)
 
         method = self.method_box.GetSelection()
 
