@@ -1873,7 +1873,7 @@ class RandomSetup(wx.Frame):
 
 class AdvancedSettings(wx.Frame):
     def __init__(self, parent, params):
-        super(AdvancedSettings, self).__init__(parent, title="Advanced Settings", size=(1000, 920))
+        super(AdvancedSettings, self).__init__(parent, title="Advanced Settings", size=(1000, 970))
         self.parent = parent
         ico = wx.Icon('images/tech_icon.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(ico)
