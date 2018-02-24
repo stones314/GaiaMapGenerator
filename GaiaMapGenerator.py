@@ -15,6 +15,9 @@ background_path = "images/Tech_bg.png"
 image_path = "images/"
 image_format = ".png"
 
+settings_path = "settings.txt"
+default_settings_path = "default_settings.txt"
+
 default_num_players = 2
 default_num_iterations = 100
 default_radius = 2
@@ -1244,16 +1247,11 @@ class MainFrame(wx.Frame):
         hsizer_main = wx.BoxSizer(wx.HORIZONTAL)
         vsizer_player_info = wx.BoxSizer(wx.VERTICAL)
 
-        self.terra_param = [100, 100, 0, 100]
-        self.gaia_param = 100
-        self.trans_param = 0
-        self.range_factor = [100, 100, 80, 5]
-        self.distribution_param = 0
-        self.density_param = 40
-        self.ratio_param = 7
+        self.import_settings()
 
         self.num_players_options = ["2", "3", "4"]
         self.num_player_box = wx.RadioBox(self, label="Number of players", choices=self.num_players_options)
+        self.num_player_box.SetSelection(self.num_players-2)
 
         btn_make_map = wx.Button(self, wx.ID_ADD, label="Generate map", size=(120, 40))
         self.Bind(wx.EVT_BUTTON, self.on_make_map, btn_make_map)
@@ -1302,16 +1300,16 @@ class MainFrame(wx.Frame):
         num_iterations_txt = wx.StaticText(self, 0, "Number of maps to evaluate")
         hsizer_iterations.Add(num_iterations_txt, 4, wx.EXPAND | wx.ALL, 5)
 
-        self.num_iterations = [10, 100, 1000, 10000]
+        self.num_iterations_opt = [10, 100, 1000, 10000]
         self.num_iterations_btn = []
-        for i, value in enumerate(self.num_iterations):
+        for i, value in enumerate(self.num_iterations_opt):
             if i == 0:
                 btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
             else:
                 btn = wx.RadioButton(self, label=str(value))
             self.num_iterations_btn.append(btn)
             hsizer_iterations.Add(btn, 1)
-            if value == 100:
+            if value == self.num_iterations:
                 btn.SetValue(True)
 
         vsizer_setup.Add(hsizer_iterations, 1, wx.EXPAND | wx.ALL, 5)
@@ -1320,9 +1318,9 @@ class MainFrame(wx.Frame):
         cluster_txt = wx.StaticText(self, 0, "Maximum cluster size")
         hsizer_cluster.Add(cluster_txt, 4, wx.EXPAND | wx.ALL, 5)
 
-        self.cluster_size = [4, 5, 6, 100]
+        self.cluster_size_opt = [4, 5, 6, 100]
         self.cluster_size_btn = []
-        for i, value in enumerate(self.cluster_size):
+        for i, value in enumerate(self.cluster_size_opt):
             if value == 100:
                 str_value = "7+"
             else:
@@ -1334,7 +1332,7 @@ class MainFrame(wx.Frame):
                 btn = wx.RadioButton(self, label=str_value)
             self.cluster_size_btn.append(btn)
             hsizer_cluster.Add(btn, 1)
-            if value == 5:
+            if value == self.cluster_size:
                 btn.SetValue(True)
 
         vsizer_setup.Add(hsizer_cluster, 1, wx.EXPAND | wx.ALL, 5)
@@ -1343,16 +1341,16 @@ class MainFrame(wx.Frame):
         neighbor_txt = wx.StaticText(self, 0, "Minimum distance between equal planets")
         hsizer_neighbor.Add(neighbor_txt, 5, wx.EXPAND | wx.ALL, 5)
 
-        self.min_neighbor_distance = [2, 3, 4]
+        self.min_neighbor_distance_opt = [2, 3, 4]
         self.min_neighbor_distance_btn = []
-        for i, value in enumerate(self.min_neighbor_distance):
+        for i, value in enumerate(self.min_neighbor_distance_opt):
             if i == 0:
                 btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
             else:
                 btn = wx.RadioButton(self, label=str(value))
             self.min_neighbor_distance_btn.append(btn)
             hsizer_neighbor.Add(btn, 1)
-            if value == 3:
+            if value == self.min_neighbor_distance:
                 btn.SetValue(True)
 
         vsizer_setup.Add(hsizer_neighbor, 1, wx.EXPAND | wx.ALL, 5)
@@ -1361,16 +1359,16 @@ class MainFrame(wx.Frame):
         edge_txt = wx.StaticText(self, 0, "Maximum edge planets")
         hsizer_edge.Add(edge_txt, 5, wx.EXPAND | wx.ALL, 5)
 
-        self.max_edge_planets = [1, 2, 3]
+        self.max_edge_planets_opt = [1, 2, 3]
         self.max_edge_planets_btn = []
-        for i, value in enumerate(self.max_edge_planets):
+        for i, value in enumerate(self.max_edge_planets_opt):
             if i == 0:
                 btn = wx.RadioButton(self, label=str(value), style=wx.RB_GROUP)
             else:
                 btn = wx.RadioButton(self, label=str(value))
             self.max_edge_planets_btn.append(btn)
             hsizer_edge.Add(btn, 1)
-            if value == 2:
+            if value == self.max_edge_planets:
                 btn.SetValue(True)
 
         vsizer_setup.Add(hsizer_edge, 1, wx.EXPAND | wx.ALL, 5)
@@ -1379,7 +1377,7 @@ class MainFrame(wx.Frame):
         core_txt = wx.StaticText(self, 0, "Keep core sectors")
         self.rb_core_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
         rb_core_no = wx.RadioButton(self, label="No")
-        rb_core_no.SetValue(True)
+        rb_core_no.SetValue(self.not_keep_core)
 
         hsizer_core.Add(core_txt, 6, wx.EXPAND | wx.ALL, 5)
         hsizer_core.Add(self.rb_core_yes, 1)
@@ -1390,7 +1388,7 @@ class MainFrame(wx.Frame):
         center_txt = wx.StaticText(self, 0, "2-player: Disable hex 6 in centre")
         self.rb_center_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
         rb_center_no = wx.RadioButton(self, label="No")
-        rb_center_no.SetValue(True)
+        rb_center_no.SetValue(self.not_disable_6)
 
         hsizer_center.Add(center_txt, 6, wx.EXPAND | wx.ALL, 5)
         hsizer_center.Add(self.rb_center_yes, 1)
@@ -1472,6 +1470,40 @@ class MainFrame(wx.Frame):
         self.Centre()
         self.Show()
 
+    def read_settings(self):
+        pass
+
+    def import_settings(self):
+        settings_file = open(settings_path, "r")
+
+        for line in settings_file:
+            exec(line)
+
+    def save_settings(self):
+        settings_file = open(settings_path, "w")
+        settings_file.write("self.num_players"+" = "+str(self.num_players))
+        settings_file.write("self.num_iterations" + " = " + str(self.num_iterations))
+        settings_file.write("self.cluster_size" + " = " + str(self.cluster_size))
+        settings_file.write("self.min_neighbor_distance" + " = " + str(self.min_neighbor_distance))
+        settings_file.write("self.max_edge_planets" + " = " + str(self.max_edge_planets))
+        settings_file.write("self.not_keep_core" + " = " + str(self.not_keep_core))
+        settings_file.write("self.not_disable_6" + " = " + str(self.not_disable_6))
+        settings_file.write("self.sector_count" + " = " + str(self.sector_count))
+        settings_file.write("self.terra_param" + " = " + str(self.terra_param))
+        settings_file.write("self.gaia_param" + " = " + str(self.gaia_param))
+        settings_file.write("self.trans_param" + " = " + str(self.trans_param))
+        settings_file.write("self.range_factor" + " = " + str(self.range_factor))
+        settings_file.write("self.distribution_param" + " = " + str(self.distribution_param))
+        settings_file.write("self.density_param" + " = " + str(self.density_param))
+        settings_file.write("self.ratio_param" + " = " + str(self.ratio_param))
+
+    def reset_settings(self):
+        default_settings_file = open(default_settings_path, "r")
+        settings_file = open(settings_path, "w")
+
+        for line in default_settings_file:
+            settings_file.write(line)
+
     def on_advanced(self, event):
         params = self.terra_param, self.gaia_param, self.trans_param, self.range_factor, \
                  self.distribution_param, self.density_param, self.ratio_param
@@ -1513,22 +1545,22 @@ class MainFrame(wx.Frame):
         num_iteration = 0
         for i, btn in enumerate(self.num_iterations_btn):
             if btn.GetValue() == True:
-                num_iteration = self.num_iterations[i]
+                num_iteration = self.num_iterations_opt[i]
 
         cluster_size = 0
         for i, btn in enumerate(self.cluster_size_btn):
             if btn.GetValue() == True:
-                cluster_size = self.cluster_size[i]
+                cluster_size = self.cluster_size_opt[i]
 
         min_neighbor_distance = 0
         for i, btn in enumerate(self.min_neighbor_distance_btn):
             if btn.GetValue() == True:
-                min_neighbor_distance = self.min_neighbor_distance[i]
+                min_neighbor_distance = self.min_neighbor_distance_opt[i]
 
         max_edge_planets = 0
         for i, btn in enumerate(self.max_edge_planets_btn):
             if btn.GetValue() == True:
-                max_edge_planets = self.max_edge_planets[i]
+                max_edge_planets = self.max_edge_planets_opt[i]
 
         # terra_param = default_terra_param
         # gaia_param = default_gaia_param
@@ -1812,7 +1844,7 @@ class RandomSetup(wx.Frame):
 
 class AdvancedSettings(wx.Frame):
     def __init__(self, parent, params):
-        super(AdvancedSettings, self).__init__(parent, title="Advanced Settings", size=(1000, 850))
+        super(AdvancedSettings, self).__init__(parent, title="Advanced Settings", size=(1000, 920))
         self.parent = parent
         ico = wx.Icon('images/tech_icon.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(ico)
@@ -1918,7 +1950,16 @@ based on planet density, planet type or both."""
         btn_apply = wx.Button(self, wx.ID_APPLY, label="Apply", size=(120, 40))
         self.Bind(wx.EVT_BUTTON, self.on_apply, btn_apply)
 
+        hsizer = wx.BoxSizer(wx.HORIZONTAL  )
+        btn_save = wx.Button(self, wx.ID_SAVE, label="Save settings", size=(60, 40))
+        self.Bind(wx.EVT_BUTTON, self.on_save_settings, btn_save)
+        btn_reset = wx.Button(self, wx.ID_RESET, label="Reset settings", size=(60, 40))
+        self.Bind(wx.EVT_BUTTON, self.on_reset_settings, btn_reset)
+        hsizer.Add(btn_save, 1, wx.EXPAND | wx.ALL, 0)
+        hsizer.Add(btn_reset, 1, wx.EXPAND | wx.ALL, 0)
+
         vsizer_settings.Add(btn_apply, 0, wx.EXPAND | wx.ALL, 10)
+        vsizer_settings.Add(hsizer, 0, wx.EXPAND | wx.ALL, 10)
 
         # Information text
         info_padding = 5
@@ -1987,7 +2028,7 @@ based on planet density, planet type or both."""
         self.Centre()
         self.Show()
 
-    def on_apply(self, event):
+    def on_apply(self, event=None):
         # radius_param = 0
         # for i, btn in enumerate(self.radius_btn):
         #     if btn.GetValue() == True:
@@ -2014,6 +2055,13 @@ based on planet density, planet type or both."""
 
         self.parent.set_params(params)
         self.on_close()
+
+    def on_save_settings(self, event=None):
+        self.on_apply()
+        self.parent.save_settings()
+
+    def on_reset_settings(self, event=None):
+        self.parent.reset_settings()
 
     def on_error(self, error_message):
         PopupWindow(self, error_message, "WARNING", (300, 200))
