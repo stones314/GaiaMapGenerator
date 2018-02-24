@@ -482,11 +482,21 @@ Map Stuff:
 
 
 class Map(object):
-    def __init__(self, num_players, random=True, keep_core_sectors=False, disable_6_as_centre_in_2p=False,
-                 use_323_layout=False):
+    def __init__(self, num_players, random_map=True, keep_core_sectors=False, disable_6_as_centre_in_2p=False,
+                 layout_type_3p=0):
         """
         2-player: 2-3-2, hex 1, 2, 3, 4, 5_,6_,7_ (option: 6_ not in centre)
-        3- and 4-player: 3-4-3, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+        3-player:
+          type 0: 3-4-4, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+          type 1: 2-3-3, hex 1, 2, 3, 4, 5, 6, 7, 8
+          type 2: 3-2-3, hex 1, 2, 3, 4, 5, 6, 7, 8
+          type 3: 3-3-2, hex 1, 2, 3, 4, 5, 6, 7, 8
+          type 4: 3-3-3, hex 1, 2, 3, 4, 5_, 6_, 7_, 9, 10
+          type 5: 3-3-3, hex 1, 2, 3, 5_, 6, 7, 8, 9, 10
+          type 6: random between type 0-5
+          type 7: random between type 1-3
+          type 8: random between type 4-5
+        4-player: 3-4-3, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 
         centre (x, y) - (hor, ver)
 
@@ -495,13 +505,25 @@ class Map(object):
         """
 
         self.num_players = num_players
-        self.random = random
+        self.random = random_map
         self.width = 23
         self.height = 30
         self.keep_core_sectors = keep_core_sectors
         self.disable_6_as_centre_in_2p = disable_6_as_centre_in_2p
-        self.use_323_layout = use_323_layout
+        self.layout_type_3p = layout_type_3p
         self.max_rejected_rotations = 10000
+
+        """
+          type 6: random between type 0-5
+          type 7: random between type 1-3
+          type 8: random between type 4-5
+        """
+        if self.layout_type_3p == 6:
+            self.layout_type_3p = random.randint(0, 5)
+        elif self.layout_type_3p == 7:
+            self.layout_type_3p = random.randint(1, 3)
+        elif self.layout_type_3p == 8:
+            self.layout_type_3p = random.randint(4, 5)
 
         self.image_location = "images/"
         self.image_name = "Gaia_map"
@@ -549,15 +571,13 @@ class Map(object):
         self.TR_SC = 7.0
 
     def set_map(self):
-        Small = ["1", "5_", "2", "3", "6_", "4", "7_"]
-        Medium = ["7", "1", "5", "2", "3", "8", "4", "6", "9", "10"]
-        Large = ["10", "1", "5", "9", "2", "3", "6", "8", "4", "7"]
         index = 0
         # default_sector_rotation = 0
         print "\n---------------------------------------------\n"
 
         if self.num_players == 2:
             print "Setting up 2-3-2 map for 2 players"
+            Small = ["1", "5_", "2", "3", "6_", "4", "7_"]
             self.map = [["A", "B"], ["C", "D", "E"], ["F", "G"]]
             self.centre = [[(6, 6), (11, 7)], [(3, 13), (8, 14), (13, 15)], [(5, 21), (10, 22)]]
             if self.random:
@@ -586,26 +606,12 @@ class Map(object):
                         Small[5] = reminding_sectors[2]
 
             self.content = Small
-        elif self.use_323_layout:
-            print "Setting up 3-2-3 map for 3 players"
-            self.map = [["A", "B", "C"], ["D", "E"], ["F", "G", "H"]]
-            self.centre = [[(6, 6), (11, 7), (16, 8)], [(8, 14), (13, 15)],
-                           [(5, 21), (10, 22), (15, 23)]]
-            if self.random:
-                if not self.keep_core_sectors:
-                    random.shuffle(Medium)
-                else:
-                    reminding_sectors = ["5", "6", "7", "8", "9", "10"]
-                    random.shuffle(reminding_sectors)
-                    Medium[0] = reminding_sectors[0]
-                    Medium[2] = reminding_sectors[1]
-                    Medium[5] = reminding_sectors[2]
-                    Medium[7] = reminding_sectors[3]
-            self.content = Medium
-        else:
+        elif self.num_players == 4 or self.layout_type_3p == 0:
             print "Setting up 3-4-3 map for 3/4 players"
+            Large = ["10", "1", "5", "9", "2", "3", "6", "8", "4", "7"]
             self.map = [["A", "B", "C"], ["D", "E", "F", "G"], ["H", "I", "J"]]
-            self.centre = [[(6, 6), (11, 7), (16, 8)], [(3, 13), (8, 14), (13, 15), (18, 16)],
+            self.centre = [[(6, 6), (11, 7), (16, 8)],
+                           [(3, 13), (8, 14), (13, 15), (18, 16)],
                            [(5, 21), (10, 22), (15, 23)]]
             if self.random:
                 if not self.keep_core_sectors:
@@ -620,6 +626,92 @@ class Map(object):
                     Large[7] = reminding_sectors[4]
                     Large[9] = reminding_sectors[5]
             self.content = Large
+        elif self.num_players == 3:
+            if self.layout_type_3p in [1, 2, 3]:
+                """
+                  type 1: 2-3-3, hex 1, 2, 3, 4, 5, 6, 7, 8
+                  type 2: 3-2-3, hex 1, 2, 3, 4, 5, 6, 7, 8
+                  type 3: 3-3-2, hex 1, 2, 3, 4, 5, 6, 7, 8
+                """
+                Medium_123 = ["7", "1", "5", "2", "3", "8", "4", "6"]
+                if self.layout_type_3p == 1:
+                    print "Setting up 2-3-3 map for 3 players"
+                    self.map = [["A", "B"], ["C", "D", "E"], ["F", "G", "H"]]
+                    self.centre = [[(6, 6), (11, 7)],
+                                   [(3, 13), (8, 14), (13, 15)],
+                                   [(5, 21), (10, 22), (15, 23)]]
+                elif self.layout_type_3p == 2:
+                    print "Setting up 3-2-3 map for 3 players"
+                    self.map = [["A", "B", "C"], ["D", "E"], ["F", "G", "H"]]
+                    self.centre = [[(6, 6), (11, 7), (16, 8)],
+                                   [(8, 14), (13, 15)],
+                                   [(5, 21), (10, 22), (15, 23)]]
+                else:
+                    print "Setting up 3-3-2 map for 3 players"
+                    self.map = [["A", "B", "C"], ["D", "E", "F"], ["G", "H"]]
+                    self.centre = [[(6, 6), (11, 7), (16, 8)],
+                                   [(8, 14), (13, 15), (18, 16)],
+                                   [(10, 22), (15, 23)]]
+                if self.random:
+                    if not self.keep_core_sectors:
+                        random.shuffle(Medium_123)
+                    else:
+                        reminding_sectors = ["5", "6", "7", "8"]
+                        random.shuffle(reminding_sectors)
+                        Medium_123[0] = reminding_sectors[0]
+                        Medium_123[2] = reminding_sectors[1]
+                        Medium_123[5] = reminding_sectors[2]
+                        Medium_123[7] = reminding_sectors[3]
+                self.content = Medium_123
+            elif self.layout_type_3p == 4:
+                """
+                  type 4: 3-3-3, hex 1, 2, 3, 4, 5_, 6_, 7_, 9, 10
+                  type 5: 3-3-3, hex 1, 2, 3, 5_, 6, 7, 8, 9, 10
+                """
+                print "Setting up 3-3-3 map for 3 players"
+                Medium_4 = ["7", "1", "5_", "9", "2", "3", "10", "4", "6"]
+                self.map = [["A", "B", "C"], ["D", "E", "F"], ["G", "H", "I"]]
+                self.centre = [[(6, 6), (11, 7), (16, 8)],
+                               [(3, 13), (8, 14), (13, 15)],
+                               [(5, 21), (10, 22), (15, 23)]]
+                if self.random:
+                    if not self.keep_core_sectors:
+                        random.shuffle(Medium_4)
+                    else:
+                        reminding_sectors = ["5_", "6", "7", "9", "10"]
+                        random.shuffle(reminding_sectors)
+                        Medium_4[0] = reminding_sectors[0]
+                        Medium_4[2] = reminding_sectors[1]
+                        Medium_4[3] = reminding_sectors[2]
+                        Medium_4[6] = reminding_sectors[3]
+                        Medium_4[8] = reminding_sectors[4]
+                self.content = Medium_4
+            elif self.layout_type_3p == 5:
+                """
+                  type 5: 3-3-3, hex 1, 2, 3, 5_, 6, 7, 8, 9, 10
+                  type 6: random between type 0-5
+                  type 7: random between type 1-3
+                  type 8: random between type 4-5
+                """
+                print "Setting up 3-3-3 map for 3 players"
+                Medium_5 = ["5_", "1", "6", "7", "2", "3", "8", "9", "10"]
+                self.map = [["A", "B", "C"], ["D", "E", "F"], ["G", "H", "I"]]
+                self.centre = [[(6, 6), (11, 7), (16, 8)],
+                               [(3, 13), (8, 14), (13, 15)],
+                               [(5, 21), (10, 22), (15, 23)]]
+                if self.random:
+                    if not self.keep_core_sectors:
+                        random.shuffle(Medium_5)
+                    else:
+                        reminding_sectors = ["5_", "6", "7", "8", "9", "10"]
+                        random.shuffle(reminding_sectors)
+                        Medium_5[0] = reminding_sectors[0]
+                        Medium_5[2] = reminding_sectors[1]
+                        Medium_5[3] = reminding_sectors[2]
+                        Medium_5[6] = reminding_sectors[3]
+                        Medium_5[7] = reminding_sectors[4]
+                        Medium_5[8] = reminding_sectors[5]
+                self.content = Medium_5
 
         for j, row in enumerate(self.map):
             for i, item in enumerate(row):
@@ -688,14 +780,24 @@ class Map(object):
         sector_list = self.get_printable_map_data()
         # print sector_list
 
+
         max_row_width = len(sector_list[0])
         for i in range(1, 3):
             if len(sector_list[i]) > max_row_width:
                 max_row_width = len(sector_list[i])
 
         map_image_width = int(self.sector_image_width * max_row_width * 4.82 / 5.0)
-        if self.use_323_layout:
-            map_image_width = int(self.sector_image_width * max_row_width * 1.04)
+        if self.num_players == 3:
+            if self.layout_type_3p == 1:
+                map_image_width = int(self.sector_image_width * max_row_width * 1.10)
+            elif self.layout_type_3p == 2:
+                map_image_width = int(self.sector_image_width * max_row_width * 1.04)
+            elif self.layout_type_3p == 3:
+                map_image_width = int(self.sector_image_width * max_row_width * 1.15)
+            elif self.layout_type_3p == 4:
+                map_image_width = int(self.sector_image_width * max_row_width * 1.15)
+            elif self.layout_type_3p == 5:
+                map_image_width = int(self.sector_image_width * max_row_width * 1.15)
         map_image_height = int(self.sector_image_height * 2.8)
 
         self.map_picture = Image.new("RGB", (map_image_width, map_image_height), (255, 255, 255))
@@ -710,13 +812,21 @@ class Map(object):
         v_offsets = [0, 0, int(self.sector_image_height * 0.1)]
         h_offsets = [sector_start_horizontal, 0, sector_start_horizontal - int(self.sector_image_width * 0.18)]
 
-        if self.use_323_layout:
-            h_offsets = [self.sector_image_width * 0.18,
-                         sector_start_horizontal,
-                         0.0]
-            v_offsets = [0,
-                         int(self.sector_image_height * 0.1),
-                         int(self.sector_image_height * 0.1)]
+        if self.num_players == 3:
+            if self.layout_type_3p == 2:
+                h_offsets = [self.sector_image_width * 0.18,
+                             sector_start_horizontal,
+                             0.0]
+                v_offsets = [0,
+                             int(self.sector_image_height * 0.1),
+                             int(self.sector_image_height * 0.1)]
+            elif self.layout_type_3p == 3:
+                h_offsets = [self.sector_image_width * 0.18,
+                             sector_start_horizontal,
+                             self.sector_image_width * 0.94]
+                v_offsets = [0,
+                             int(self.sector_image_height * 0.1),
+                             int(self.sector_image_height * 0.2)]
 
         for j, row in enumerate(sector_list):
             for i, (sector_number, sector_rotation) in enumerate(row):
@@ -1497,7 +1607,7 @@ class MainFrame(wx.Frame):
             else:
                 smaller_map = False
 
-        map = Map(n_players, True, keep_core, disable_six_in_centre, smaller_map)
+        map = Map(n_players, True, keep_core, disable_six_in_centre, 6)
 
         method = self.method_box.GetSelection()
 
