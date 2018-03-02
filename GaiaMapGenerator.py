@@ -387,7 +387,7 @@ def hex_happiness(col, row, hex_map, NW=0.5, PD_SC=30.0, TR_SC=30.0, radius=3):
           number of planet types further away from the optimum
     The resulting value should be a number between 0.0 and 1.0
     """
-    planet_types = ["Bl", "Br", "Ye", "Or", "Re", "Bl", "Wh", "Ga", "Tr"]
+    planet_types = ["Bk", "Br", "Ye", "Or", "Re", "Bl", "Wh", "Ga", "Tr"]
     n_planet_types = len(planet_types)
     exists_in_range = [0.0 for i in range(n_planet_types)]
     NH = 0.0
@@ -487,9 +487,16 @@ Map Stuff:
 
 class Map(object):
     def __init__(self, num_players, random_map=True, keep_core_sectors=False, disable_6_as_centre_in_2p=False,
-                 layout_type_3p=0):
+                 layout_type_2p=0, layout_type_3p=0):
         """
-        2-player: 2-3-2, hex 1, 2, 3, 4, 5_,6_,7_ (option: 6_ not in centre)
+        2-player layout options: (option: 6_ not in centre)
+          type 0: sectors 1, 2, 3, 4, 5_, 6_, 7_
+          type 1: sectors 1, 2, 3, 5_, 6, 7, 8
+          type 2: sectors 2, 4, 5, 6, 7_, 8, 10
+          type 3: sectors 1, 3, 4, 5, 6_, 7, 9
+          type 4: sectors 1, 3, 4, 5, 7_, 9, 10
+          type 5: random between 0-4
+          type 6: 2-2-2: 1, 2, 3, 4, 9, 10
         3-player:
           type 0: 3-4-4, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
           type 1: 2-3-3, hex 1, 2, 3, 4, 5, 6, 7, 8
@@ -514,10 +521,22 @@ class Map(object):
         self.height = 30
         self.keep_core_sectors = keep_core_sectors
         self.disable_6_as_centre_in_2p = disable_6_as_centre_in_2p
+        self.layout_type_2p = layout_type_2p
         self.layout_type_3p = layout_type_3p
         self.max_rejected_rotations = 1000000
 
         """
+        2-player layout options:
+          type 5: random between 0-4
+        """
+        if self.num_players == 2:
+            if self.layout_type_2p == 5:
+                self.layout_type_2p = random.randint(0, 4)
+            if self.layout_type_2p in [1, 2, 3, 4, 6]:
+                self.keep_core_sectors = False
+
+        """
+        3p layout options:
           type 6: random between type 0-5
           type 7: random between type 1-3
           type 8: random between type 4-5
@@ -580,36 +599,81 @@ class Map(object):
         print "\n---------------------------------------------\n"
 
         if self.num_players == 2:
-            print "Setting up 2-3-2 map for 2 players"
-            Small = ["1", "5_", "2", "3", "6_", "4", "7_"]
-            self.map = [["A", "B"], ["C", "D", "E"], ["F", "G"]]
-            self.centre = [[(6, 6), (11, 7)], [(3, 13), (8, 14), (13, 15)], [(5, 21), (10, 22)]]
-            if self.random:
+            if self.layout_type_2p == 6:
+                """
+                  type 6: 2-2-2: 1, 2, 3, 4, 9, 10
+                """
+                print "Setting up 2-2-2 map for 2 players"
+                smallest = ["9", "1", "2", "3", "4", "10"]
+                self.map = [["A", "B"], ["C", "D"], ["E", "F"]]
+                self.centre = [[(6, 6), (11, 7)],
+                               [(8, 14), (13, 15)],
+                               [(10, 22), (15, 23)]]
                 if not self.keep_core_sectors:
-                    random.shuffle(Small)
-                    if self.disable_6_as_centre_in_2p and Small[3] == "6_":
-                        centre = Small[0]
-                        Small[0] = Small[3]
-                        Small[3] = centre
+                    random.shuffle(smallest)
                 else:
-                    reminding_sectors = ["5_", "6_", "7_"]
-                    random.shuffle(reminding_sectors)
-                    reminding_on_the_right = random.randint(0, 1)
-                    if reminding_on_the_right == 1:
-                        Small[1] = reminding_sectors[0]
-                        Small[4] = reminding_sectors[1]
-                        Small[6] = reminding_sectors[2]
-                    else:
-                        # shift core sectors to the right
-                        Small[1] = Small[0]
-                        Small[4] = Small[3]
-                        Small[3] = Small[2]
-                        Small[6] = Small[5]
-                        Small[0] = reminding_sectors[0]
-                        Small[2] = reminding_sectors[1]
-                        Small[5] = reminding_sectors[2]
+                    switch = random.randint(0, 1)
+                    if switch == 1:
+                        smallest[0] = "10"
+                        smallest[5] = "9"
 
-            self.content = Small
+                self.content = smallest
+            else:
+                """
+                  type 0: sectors 1, 2, 3, 4, 5_, 6_, 7_
+                  type 1: sectors 1, 2, 3, 5_, 6, 7, 8
+                  type 2: sectors 2, 4, 5, 6, 7_, 8, 10
+                  type 3: sectors 1, 3, 4, 5, 6_, 7, 9
+                  type 4: sectors 1, 3, 4, 5, 7_, 9, 10
+                """
+                print "Setting up 2-3-2 map for 2 players"
+                small = ["1", "5_", "2", "3", "6_", "4", "7_"]
+                reminding_sectors = ["5_", "6_", "7_"]
+                if self.layout_type_2p == 1:
+                    small = ["1", "5_", "2", "3", "6", "8", "7"]
+                    # reminding_sectors = ["5_", "6", "7", "8"]
+                elif self.layout_type_2p == 2:
+                    small = ["5", "6", "2", "7_", "8", "4", "10"]
+                    # reminding_sectors = ["5", "6", "7_", "8", "10"]
+                elif self.layout_type_2p == 3:
+                    small = ["1", "5", "6_", "3", "7", "4", "9"]
+                    # reminding_sectors = ["5", "6_", "7", "9"]
+                elif self.layout_type_2p == 4:
+                    small = ["1", "5", "7_", "3", "9", "4", "10"]
+                    # reminding_sectors = ["5", "7_", "9", "10"]
+                self.map = [["A", "B"], ["C", "D", "E"], ["F", "G"]]
+                self.centre = [[(6, 6), (11, 7)],
+                               [(3, 13), (8, 14), (13, 15)],
+                               [(5, 21), (10, 22)]]
+                if self.random:
+                    if self.layout_type_2p == 0:
+                        if not self.keep_core_sectors:
+                            random.shuffle(small)
+                            if self.disable_6_as_centre_in_2p and small[3] == "6_":
+                                centre = small[0]
+                                small[0] = small[3]
+                                small[3] = centre
+                        else:
+                            random.shuffle(reminding_sectors)
+                            reminding_on_the_right = random.randint(0, 1)
+                            if reminding_on_the_right == 1:
+                                small[1] = reminding_sectors[0]
+                                small[4] = reminding_sectors[1]
+                                small[6] = reminding_sectors[2]
+                            else:
+                                # shift core sectors to the right
+                                small[1] = small[0]
+                                small[4] = small[3]
+                                small[3] = small[2]
+                                small[6] = small[5]
+                                small[0] = reminding_sectors[0]
+                                small[2] = reminding_sectors[1]
+                                small[5] = reminding_sectors[2]
+                    else:
+                        random.shuffle(small)
+
+                self.content = small
+
         elif self.num_players == 4 or self.layout_type_3p == 0:
             print "Setting up 3-4-3 map for 3/4 players"
             Large = ["10", "1", "5", "9", "2", "3", "6", "8", "4", "7"]
@@ -670,10 +734,9 @@ class Map(object):
             elif self.layout_type_3p == 4:
                 """
                   type 4: 3-3-3, hex 1, 2, 3, 4, 5_, 6_, 7_, 9, 10
-                  type 5: 3-3-3, hex 1, 2, 3, 5_, 6, 7, 8, 9, 10
                 """
                 print "Setting up 3-3-3 map for 3 players"
-                Medium_4 = ["7", "1", "5_", "9", "2", "3", "10", "4", "6"]
+                Medium_4 = ["7_", "1", "5_", "9", "2", "3", "10", "4", "6_"]
                 self.map = [["A", "B", "C"], ["D", "E", "F"], ["G", "H", "I"]]
                 self.centre = [[(6, 6), (11, 7), (16, 8)],
                                [(3, 13), (8, 14), (13, 15)],
@@ -682,7 +745,7 @@ class Map(object):
                     if not self.keep_core_sectors:
                         random.shuffle(Medium_4)
                     else:
-                        reminding_sectors = ["5_", "6", "7", "9", "10"]
+                        reminding_sectors = ["5_", "6_", "7_", "9", "10"]
                         random.shuffle(reminding_sectors)
                         Medium_4[0] = reminding_sectors[0]
                         Medium_4[2] = reminding_sectors[1]
@@ -693,9 +756,6 @@ class Map(object):
             elif self.layout_type_3p == 5:
                 """
                   type 5: 3-3-3, hex 1, 2, 3, 5_, 6, 7, 8, 9, 10
-                  type 6: random between type 0-5
-                  type 7: random between type 1-3
-                  type 8: random between type 4-5
                 """
                 print "Setting up 3-3-3 map for 3 players"
                 Medium_5 = ["5_", "1", "6", "7", "2", "3", "8", "9", "10"]
@@ -791,6 +851,8 @@ class Map(object):
                 max_row_width = len(sector_list[i])
 
         map_image_width = int(self.sector_image_width * max_row_width * 4.82 / 5.0)
+        if self.num_players == 2 and self.layout_type_2p == 6:
+            map_image_width = int(self.sector_image_width * max_row_width * 1.5)
         if self.num_players == 3:
             if self.layout_type_3p == 1:
                 map_image_width = int(self.sector_image_width * max_row_width * 1.10)
@@ -816,6 +878,13 @@ class Map(object):
         v_offsets = [0, 0, int(self.sector_image_height * 0.1)]
         h_offsets = [sector_start_horizontal, 0, sector_start_horizontal - int(self.sector_image_width * 0.18)]
 
+        if self.num_players == 2 and self.layout_type_2p == 6:
+            h_offsets = [self.sector_image_width * 0.18,
+                         sector_start_horizontal,
+                         self.sector_image_width * 0.94]
+            v_offsets = [0,
+                         int(self.sector_image_height * 0.1),
+                         int(self.sector_image_height * 0.2)]
         if self.num_players == 3:
             if self.layout_type_3p == 2:
                 h_offsets = [self.sector_image_width * 0.18,
@@ -1284,7 +1353,7 @@ class MainFrame(wx.Frame):
         vsizer_setup_2 = wx.BoxSizer(wx.VERTICAL)
         vsizer_info = wx.BoxSizer(wx.VERTICAL)
 
-        methods = ["Planet Type Happiness", "Distribution", "Big Clusters"]
+        methods = ["Neighbour Quality", "Distribution", "Big Clusters"]
         self.method_box = wx.RadioBox(self, label="Optimization method", choices=methods)
         vsizer_setup.Add(self.method_box, -1, wx.EXPAND | wx.ALL, 10)
 
@@ -1388,7 +1457,7 @@ class MainFrame(wx.Frame):
         vsizer_setup.Add(hsizer_core, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_center = wx.BoxSizer(wx.HORIZONTAL)
-        center_txt = wx.StaticText(self, 0, "2-player: Disable hex 6 in centre")
+        center_txt = wx.StaticText(self, 0, "2-player: Disable sector 6b in centre")
         self.rb_center_yes = wx.RadioButton(self, label="Yes", style=wx.RB_GROUP)
         rb_center_no = wx.RadioButton(self, label="No")
         if self.disable_six_in_centre:
@@ -1401,13 +1470,49 @@ class MainFrame(wx.Frame):
         hsizer_center.Add(rb_center_no, 1)
         vsizer_setup.Add(hsizer_center, 1, wx.EXPAND | wx.ALL, 5)
 
-        hsizer_3p_type = wx.BoxSizer(wx.HORIZONTAL)
-        rb_3p_type_txt = wx.StaticText(self, 0, "3 player sector count")
-        hsizer_3p_type.Add(rb_3p_type_txt, 4, wx.EXPAND | wx.ALL, 5)
+
+        hsizer_2p_type = wx.BoxSizer(wx.HORIZONTAL)
+        rb_2p_type_txt = wx.StaticText(self, 0, "2 player sectors")
+        hsizer_2p_type.Add(rb_2p_type_txt, 1, wx.EXPAND | wx.ALL, 5)
 
         """
-        3-player:
-          type 0: 3-4-4, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+        2-player layout options:
+          type 0: sectors 1, 2, 3, 4, 5_, 6_, 7_
+          type 1: sectors 1, 2, 3, 5_, 6, 7, 8
+          type 2: sectors 2, 4, 5, 6, 7_, 8, 10
+          type 3: sectors 1, 3, 4, 5, 6_, 7, 9
+          type 4: sectors 1, 3, 4, 5, 7_, 9, 10
+          type 5: random between 0-4
+          type 6: 2-2-2: 1, 2, 3, 4, 9, 10
+        """
+        self.layout_type_2p_options = ["1) 7 sectors: 1, 2, 3, 4, 5b, 6b, 7b",
+                                       "2) 7 sectors: 1, 2, 3, 5b, 6a, 7a, 8",
+                                       "3) 7 sectors: 2, 4, 5a, 6a, 7b, 8, 10",
+                                       "4) 7 sectors: 1, 3, 4, 5a, 6b, 7a, 9",
+                                       "5) 7 sectors: 1, 3, 4, 5a, 7b, 9, 10",
+                                       "6) 7 sectors: Random of options 1-5",
+                                       "7) 6 sectors: 1, 2, 3, 4, 9, 10"]
+        self.layout_type_2p_opt_id = [0,
+                                      1,
+                                      2,
+                                      3,
+                                      4,
+                                      5,
+                                      6]
+        self.layout_type_2p_cb = wx.ComboBox(self,
+                                             style=wx.CB_READONLY,
+                                             choices=self.layout_type_2p_options)
+        self.layout_type_2p_cb.SetSelection(0)
+        hsizer_2p_type.Add(self.layout_type_2p_cb, 1)
+        vsizer_setup.Add(hsizer_2p_type, 1, wx.EXPAND | wx.ALL, 5)
+
+        hsizer_3p_type = wx.BoxSizer(wx.HORIZONTAL)
+        rb_3p_type_txt = wx.StaticText(self, 0, "3 player sectors")
+        hsizer_3p_type.Add(rb_3p_type_txt, 1, wx.EXPAND | wx.ALL, 5)
+
+        """
+        3-player layout options:
+          type 0: 3-4-3, hex 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
           type 1: 2-3-3, hex 1, 2, 3, 4, 5, 6, 7, 8
           type 2: 3-2-3, hex 1, 2, 3, 4, 5, 6, 7, 8
           type 3: 3-3-2, hex 1, 2, 3, 4, 5, 6, 7, 8
@@ -1417,20 +1522,29 @@ class MainFrame(wx.Frame):
           type 7: random between type 1-3
           type 8: random between type 4-5
         """
-        self.rb_3p_type = ["8", "9", "10", "Random"]
-        self.layout_3p_types = [7, 8, 0, 6]
-        self.rb_3p_type_btn = []
-        for i, value in enumerate(self.rb_3p_type):
-            if i == 0:
-                btn = wx.RadioButton(self, label=value, style=wx.RB_GROUP)
-            else:
-                btn = wx.RadioButton(self, label=value)
-            self.rb_3p_type_btn.append(btn)
-            hsizer_3p_type.Add(btn, 1)
-            if value == "Random":
-                btn.SetValue(True)
-
+        self.layout_type_3p_options = ["1) 10 sectors: 1, 2, 3, 4, 5a, 6a, 7a, 8, 9, 10",
+                                       "2) 9 sectors: 1, 2, 3, 4, 5b, 6b, 7b, 9, 10",
+                                       "3) 9 sectors: 1, 2, 3, 5b, 6a, 7a, 8, 9, 10",
+                                       "4) 9 sectors: Random of option 2 and 3",
+                                       "5) 8 sectors: 2-3-3 : 1, 2, 3, 4, 5a, 6a, 7a, 8",
+                                       "6) 8 sectors: 3-2-3 : 1, 2, 3, 4, 5a, 6a, 7a, 8",
+                                       "7) 8 sectors: Random of option 5 and 6",
+                                       "8) Random of all options"]
+        self.layout_type_3p_opt_id = [0,
+                                      4,
+                                      5,
+                                      8,
+                                      1,
+                                      2,
+                                      7,
+                                      6]
+        self.layout_type_3p_cb = wx.ComboBox(self,
+                                             style=wx.CB_READONLY,
+                                             choices=self.layout_type_3p_options)
+        self.layout_type_3p_cb.SetSelection(0)
+        hsizer_3p_type.Add(self.layout_type_3p_cb, 1)
         vsizer_setup.Add(hsizer_3p_type, 1, wx.EXPAND | wx.ALL, 5)
+
 
         btn_advanced = wx.Button(self, wx.ID_FILE, label="Advanced settings", size=(120, 40))
         self.Bind(wx.EVT_BUTTON, self.on_advanced, btn_advanced)
@@ -1446,10 +1560,11 @@ class MainFrame(wx.Frame):
         method_header.SetFont(header_font)
         vsizer_info.Add(method_header, 0, wx.EXPAND | wx.ALL, info_padding)
 
-        methods_info = [["Planet Type Happiness:",
-                         """   Search for maps that has similar happiness for all planet types 
-   (i.e. minimize variance of happiness)"""],
-                        ["Distribution:", "   Search for maps with even distribution of planet types."],
+        methods_info = [["Neighbour Quality:",
+                         """   Search for maps that has similar neighbour quality for all planet types.
+    Quality is based on planet type and range to the neighbour.
+   (it looks for minimum variance of quality between the planet types)"""],
+                        ["Distribution:", "   Search for maps with even spatial distribution of planet types."],
                         ["Big clusters:", "   Search for maps with large average cluster sizes"]]
 
         for method, description in methods_info:
@@ -1473,10 +1588,9 @@ class MainFrame(wx.Frame):
     it is never able to find a legal map."""]],
                          ["Keep core sectors:",
                           "   Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random"],
-                         ["2-player: Disable hex 6 in centre", "   Since there are few planets in this sector"],
-                         ["3-player sector count:",
-                          """   Number of sectors used in 3p.
-    For 8 and 9 it selects at random one of a few possible layouts."""]]
+                         ["2-player: Disable sector 6b in centre", "   Since there are few planets in this sector"],
+                         ["2- and 3-player sectors:",
+                          """   Select sector count and types used in 2p or 3p"""]]
 
         for i, (header, description) in enumerate(settings_info):
             small_header = wx.StaticText(self, 1, header)
@@ -1503,10 +1617,10 @@ class MainFrame(wx.Frame):
 
         self.keep_core = (True if self.rb_core_yes.GetValue() else False)
         self.disable_six_in_centre = (True if self.rb_center_yes.GetValue() else False)
-        self.layout_type_3p = 0
-        for i, btn in enumerate(self.rb_3p_type_btn):
-            if btn.GetValue() == True:
-                self.layout_type_3p = self.layout_3p_types[i]
+        self.layout_type_2p_selected = self.layout_type_2p_cb.GetCurrentSelection()
+        self.layout_type_2p = self.layout_type_2p_opt_id[self.layout_type_2p_selected]
+        self.layout_type_3p_selected = self.layout_type_3p_cb.GetCurrentSelection()
+        self.layout_type_3p = self.layout_type_3p_opt_id[self.layout_type_3p_selected]
 
         if self.disable_six_in_centre:
             if self.num_players == 2:
@@ -1596,7 +1710,12 @@ class MainFrame(wx.Frame):
         self.read_settings()
         self.set_progress(0, 0, 0)
 
-        map = Map(self.num_players, True, self.keep_core, self.disable_six_in_centre, self.layout_type_3p)
+        map = Map(self.num_players,
+                  True,
+                  self.keep_core,
+                  self.disable_six_in_centre,
+                  self.layout_type_2p,
+                  self.layout_type_3p)
 
         method = self.method_box.GetSelection()
 
@@ -1910,13 +2029,13 @@ class AdvancedSettings(wx.Frame):
 
         vsizer_settings.Add(hsizer, 0, wx.EXPAND | wx.ALL, 10)
 
-        happy_header = wx.StaticText(self, 1, "Planet Type Happiness Settings")
+        happy_header = wx.StaticText(self, 1, "Neighbour Quality Settings")
         happy_header.SetFont(header_font)
         vsizer_settings.Add(happy_header, 0, wx.EXPAND | wx.ALL, 10)
 
-        txt = """This method loops over all planets and sums up each 
-planet's happiness based on its neighbors. The goal is 
-that each planet type in sum has the same happiness"""
+        txt = """This method loops over the planets and sums up the 
+neighbour quality of each planet type. The goal is that each 
+planet type has a similar quality of its neighbours"""
         text = wx.StaticText(self, 0, txt)
         vsizer_settings.Add(text, 0, wx.EXPAND | wx.ALL, 10)
 
@@ -2006,22 +2125,19 @@ based on planet density, planet type or both."""
             info_text = wx.StaticText(self, 1, description)
             vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
 
-        settings_header = wx.StaticText(self, 1, "Planet Type Happiness Settings")
+        settings_header = wx.StaticText(self, 1, "Neighbour Quality Settings")
         settings_header.SetFont(header_font)
         vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
 
         info = [["Terraform:",
-                 """   how much the sum of happiness increases for a certain terraforming
-   cost as a neighbour. Each terraforming cost has its own value."""],
+                 """   The quality of a neighbour based on how much it costs to terraform"""],
                 ["Gaia:",
-                 """   how much the sum of happiness increases with a gaia planet 
-   as neighbour"""],
+                 """   The quality of a Gaia planet"""],
                 ["Trans-Dim:",
-                 """   how much the sum of happiness increases with a trans-dim
-   planet as neighbour"""],
+                 """   The quality of a Trans-Dim planet"""],
                 ["Range Factor:",
-                 """   how the range to a neighbour effects the happiness. 
-   Happiness value for each planet is divided by the range factor 
+                 """   How the range to a neighbour effects the quality. 
+   Quality value for each neighbour is multiplied by the range factor 
    for the given distance"""]]
 
         for method, description in info:
