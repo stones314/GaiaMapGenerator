@@ -6,8 +6,8 @@ import copy
 import math as m
 import sys
 
-# sys.stdout = open('my_stdout.log', 'w')
-# sys.stderr = open('my_stderr.log', 'w')
+sys.stdout = open('my_stdout.log', 'w')
+sys.stderr = open('my_stderr.log', 'w')
 
 default_map_path = "images/Gaia_map.png"
 default_image_name = "Gaia_map"
@@ -523,7 +523,7 @@ class Map(object):
         self.disable_6_as_centre_in_2p = disable_6_as_centre_in_2p
         self.layout_type_2p = layout_type_2p
         self.layout_type_3p = layout_type_3p
-        self.max_rejected_rotations = 1000000
+        self.max_rejected_rotations = 20000
 
         """
         2-player layout options:
@@ -566,6 +566,7 @@ class Map(object):
         self.minimal_equal_range = 3  # minimum range between equal planets (except Gaia and Transdim)
         self.maximum_cluster_size = 5  # set to 10 to ignore cluster size
         self.maximum_edge_planets = 3  # max number of edge planets allowed for a planet type
+        self.rejection_count_exceeded = False
 
         self.map = None
         self.full_map = [[None for i in range(self.height)] for j in range(self.width)]
@@ -911,6 +912,9 @@ class Map(object):
                 image = image.rotate(-sector_rotation)
                 self.map_picture.paste(image, (hor, ver), image)
 
+    def get_has_valid_map(self):
+        return self.has_valid_map
+
     def show_image_map(self):
         self.make_image_map(self.clockwise)
         self.map_picture.show()
@@ -977,6 +981,7 @@ class Map(object):
                 n_iter += 1
                 if n_iter >= self.max_rejected_rotations:
                     keep_looking = False
+                    self.rejection_count_exceeded = True
         #if self.debug_level == 1:
         #    print n_iter
         self.rejected_maps += n_iter
@@ -1201,6 +1206,10 @@ class Map(object):
                     # print "it is valid: ", self.is_valid_map()
                     # print "Full Map:"
                     # self.print_map()
+            if self.rejection_count_exceeded:
+                if print_progress_func is not None:
+                    print_progress_func(100, self.best_balance, self.rejected_maps)
+                break
             if try_no % (self.try_count / (int(100 / progress_jump))) == 0:
                 progress += progress_jump
                 if print_progress_func is not None:
@@ -1585,7 +1594,7 @@ class MainFrame(wx.Frame):
                            "    - Minimum distance between equal planets (not Gaia or Trans Dimentional)",
                            "    - Maximum number of edge planets allowed for a planet type",
                            """   NOTE: if you have too strong restrictions you might make an infinite loop where 
-    it is never able to find a legal map."""]],
+    it is never able to find a legal map. It gives up after 20 000 illegal maps."""]],
                          ["Keep core sectors:",
                           "   Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random"],
                          ["2-player: Disable sector 6b in centre", "   Since there are few planets in this sector"],
@@ -1740,6 +1749,11 @@ class MainFrame(wx.Frame):
 
         self.enable_abort_btn(True)
         map.balance_map(self.set_progress, self.should_abort)
+        if not map.get_has_valid_map():
+            self.progress.SetLabel("Map progress: 100%")
+            self.balance.SetLabel("NO VALID MAP FOUND")
+            self.abort = False
+            return
         map.set_to_balanced_map()
         map.calculate_balance(1)
 
