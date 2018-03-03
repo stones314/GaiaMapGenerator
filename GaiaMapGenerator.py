@@ -6,12 +6,14 @@ import copy
 import math as m
 import sys
 
-sys.stdout = open('my_stdout.log', 'w')
-sys.stderr = open('my_stderr.log', 'w')
+# sys.stdout = open('my_stdout.log', 'w')
+# sys.stderr = open('my_stderr.log', 'w')
 
 default_map_path = "images/Gaia_map.png"
 default_image_name = "Gaia_map"
 background_path = "images/Tech_bg.png"
+information_magenta_path = "images/Information_icon_magenta.png"
+information_blue_path = "images/Information_icon_blue.png"
 image_path = "images/"
 image_format = ".png"
 
@@ -1307,7 +1309,7 @@ GUI Stuff:
 
 class MainFrame(wx.Frame):
     def __init__(self, parent=None):
-        super(MainFrame, self).__init__(parent, title="Gaia Map Generator", size=(1300, 810))
+        super(MainFrame, self).__init__(parent, title="Gaia Map Generator", size=(800, 800))
         self.default_font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
         self.bold_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
         self.make_menu()
@@ -1321,9 +1323,15 @@ class MainFrame(wx.Frame):
         ico = wx.Icon('images/gaia_icon.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(ico)
 
+        path = information_magenta_path
+        img_info = wx.Image(path, wx.BITMAP_TYPE_ANY)
+        W = img_info.GetWidth()
+        H = img_info.GetHeight()
+        img_info = img_info.Scale(int(W * 0.15), int(H * 0.15))
+
         vsizer = wx.BoxSizer(wx.VERTICAL)
         hsizer_main = wx.BoxSizer(wx.HORIZONTAL)
-        vsizer_player_info = wx.BoxSizer(wx.VERTICAL)
+        # vsizer_player_info = wx.BoxSizer(wx.VERTICAL)
 
         self.import_settings()
 
@@ -1362,9 +1370,16 @@ class MainFrame(wx.Frame):
         vsizer_setup_2 = wx.BoxSizer(wx.VERTICAL)
         vsizer_info = wx.BoxSizer(wx.VERTICAL)
 
+        hsizer_method = wx.BoxSizer(wx.HORIZONTAL)
         methods = ["Neighbour Quality", "Distribution", "Big Clusters"]
         self.method_box = wx.RadioBox(self, label="Optimization method", choices=methods)
-        vsizer_setup.Add(self.method_box, -1, wx.EXPAND | wx.ALL, 10)
+        hsizer_method.Add(self.method_box, -1, wx.EXPAND | wx.ALL, 10)
+
+        img_info_method = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_method.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_method)
+        hsizer_method.Add(img_info_method, 0, wx.CENTRE)
+
+        vsizer_setup.Add(hsizer_method, -1, wx.EXPAND | wx.ALL, 10)
 
         hsizer_name = wx.BoxSizer(wx.HORIZONTAL)
         name_txt = wx.StaticText(self, 0, "Image name")
@@ -1372,6 +1387,10 @@ class MainFrame(wx.Frame):
 
         hsizer_name.Add(name_txt, 3, wx.EXPAND | wx.ALL, 5)
         hsizer_name.Add(self.image_name, 1)
+        img_info_name = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_name.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_name)
+        hsizer_name.Add(img_info_name, 0, wx.BOTTOM)
+
         vsizer_setup.Add(hsizer_name, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_iterations = wx.BoxSizer(wx.HORIZONTAL)
@@ -1391,6 +1410,10 @@ class MainFrame(wx.Frame):
                 btn.SetValue(True)
 
         vsizer_setup.Add(hsizer_iterations, 1, wx.EXPAND | wx.ALL, 5)
+
+        img_info_iter = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_iter.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_num_maps)
+        hsizer_iterations.Add(img_info_iter, 0, wx.BOTTOM)
 
         hsizer_cluster = wx.BoxSizer(wx.HORIZONTAL)
         cluster_txt = wx.StaticText(self, 0, "Maximum cluster size")
@@ -1413,6 +1436,10 @@ class MainFrame(wx.Frame):
             if value == self.cluster_size:
                 btn.SetValue(True)
 
+        img_info_cluster = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_cluster.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_clusters)
+        hsizer_cluster.Add(img_info_cluster, 0, wx.BOTTOM)
+
         vsizer_setup.Add(hsizer_cluster, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_neighbor = wx.BoxSizer(wx.HORIZONTAL)
@@ -1430,6 +1457,10 @@ class MainFrame(wx.Frame):
             hsizer_neighbor.Add(btn, 1)
             if value == self.min_neighbor_distance:
                 btn.SetValue(True)
+
+        img_info_neighbor = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_neighbor.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_min_distance)
+        hsizer_neighbor.Add(img_info_neighbor, 0, wx.BOTTOM)
 
         vsizer_setup.Add(hsizer_neighbor, 1, wx.EXPAND | wx.ALL, 5)
 
@@ -1449,6 +1480,10 @@ class MainFrame(wx.Frame):
             if value == self.max_edge_planets:
                 btn.SetValue(True)
 
+        img_info_edge = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_edge.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_max_edge)
+        hsizer_edge.Add(img_info_edge, 0, wx.BOTTOM)
+
         vsizer_setup.Add(hsizer_edge, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_core = wx.BoxSizer(wx.HORIZONTAL)
@@ -1463,6 +1498,11 @@ class MainFrame(wx.Frame):
         hsizer_core.Add(core_txt, 6, wx.EXPAND | wx.ALL, 5)
         hsizer_core.Add(self.rb_core_yes, 1)
         hsizer_core.Add(rb_core_no, 1)
+
+        img_info_core = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_core.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_core_sectors)
+        hsizer_core.Add(img_info_core, 0, wx.BOTTOM)
+
         vsizer_setup.Add(hsizer_core, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_center = wx.BoxSizer(wx.HORIZONTAL)
@@ -1477,8 +1517,12 @@ class MainFrame(wx.Frame):
         hsizer_center.Add(center_txt, 6, wx.EXPAND | wx.ALL, 5)
         hsizer_center.Add(self.rb_center_yes, 1)
         hsizer_center.Add(rb_center_no, 1)
-        vsizer_setup.Add(hsizer_center, 1, wx.EXPAND | wx.ALL, 5)
 
+        img_info_center = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_center.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_disable_6)
+        hsizer_center.Add(img_info_center, 0, wx.BOTTOM)
+
+        vsizer_setup.Add(hsizer_center, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_2p_type = wx.BoxSizer(wx.HORIZONTAL)
         rb_2p_type_txt = wx.StaticText(self, 0, "2 player sectors")
@@ -1513,6 +1557,11 @@ class MainFrame(wx.Frame):
                                              choices=self.layout_type_2p_options)
         self.layout_type_2p_cb.SetSelection(0)
         hsizer_2p_type.Add(self.layout_type_2p_cb, 1)
+
+        img_info_2p = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_2p.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_sectors)
+        hsizer_2p_type.Add(img_info_2p, 0, wx.BOTTOM)
+
         vsizer_setup.Add(hsizer_2p_type, 1, wx.EXPAND | wx.ALL, 5)
 
         hsizer_3p_type = wx.BoxSizer(wx.HORIZONTAL)
@@ -1552,8 +1601,12 @@ class MainFrame(wx.Frame):
                                              choices=self.layout_type_3p_options)
         self.layout_type_3p_cb.SetSelection(0)
         hsizer_3p_type.Add(self.layout_type_3p_cb, 1)
-        vsizer_setup.Add(hsizer_3p_type, 1, wx.EXPAND | wx.ALL, 5)
 
+        img_info_3p = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_3p.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_sectors)
+        hsizer_3p_type.Add(img_info_3p, 0, wx.BOTTOM)
+
+        vsizer_setup.Add(hsizer_3p_type, 1, wx.EXPAND | wx.ALL, 5)
 
         btn_advanced = wx.Button(self, wx.ID_FILE, label="Advanced settings", size=(120, 40))
         self.Bind(wx.EVT_BUTTON, self.on_advanced, btn_advanced)
@@ -1561,65 +1614,120 @@ class MainFrame(wx.Frame):
         vsizer_setup.Add(btn_advanced, 1, wx.EXPAND | wx.ALL, 5)
         hsizer_setup.Add(vsizer_setup, 1, wx.EXPAND)
 
-        info_padding = 5
-
-        header_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
-        small_header_font = wx.Font(12, wx.DECORATIVE, wx.ITALIC, wx.NORMAL)
-        method_header = wx.StaticText(self, 1, "Methods")
-        method_header.SetFont(header_font)
-        vsizer_info.Add(method_header, 0, wx.EXPAND | wx.ALL, info_padding)
-
-        methods_info = [["Neighbour Quality:",
-                         """   Search for maps that has similar neighbour quality for all planet types.
-    Quality is based on planet type and range to the neighbour.
-   (it looks for minimum variance of quality between the planet types)"""],
-                        ["Distribution:", "   Search for maps with even spatial distribution of planet types."],
-                        ["Big clusters:", "   Search for maps with large average cluster sizes"]]
-
-        for method, description in methods_info:
-            small_header = wx.StaticText(self, 1, method)
-            small_header.SetFont(small_header_font)
-            vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
-            info_text = wx.StaticText(self, 1, description)
-            vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
-
-        settings_header = wx.StaticText(self, 1, "Settings")
-        settings_header.SetFont(header_font)
-        vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
-
-        settings_info = [["Number of maps to evaluate:",
-                          ["   How many legal maps to evaluate (Illegal maps are rejected during the search).",
-                           "   A legal map follow all the limitations given by",
-                           "    - Maximum cluster size allowed",
-                           "    - Minimum distance between equal planets (not Gaia or Trans Dimentional)",
-                           "    - Maximum number of edge planets allowed for a planet type",
-                           """   NOTE: if you have too strong restrictions you might make an infinite loop where 
-    it is never able to find a legal map. It gives up after 20 000 illegal maps."""]],
-                         ["Keep core sectors:",
-                          "   Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random"],
-                         ["2-player: Disable sector 6b in centre", "   Since there are few planets in this sector"],
-                         ["2- and 3-player sectors:",
-                          """   Select sector count and types used in 2p or 3p"""]]
-
-        for i, (header, description) in enumerate(settings_info):
-            small_header = wx.StaticText(self, 1, header)
-            small_header.SetFont(small_header_font)
-            vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
-
-            if i == 0:
-                for text in description:
-                    info_text = wx.StaticText(self, 1, text)
-                    vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
-            else:
-                info_text = wx.StaticText(self, 1, description)
-                vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
-
-        hsizer_setup.Add(vsizer_info, 1, wx.EXPAND, 10)
+   #      info_padding = 5
+   #
+   #      header_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
+   #      small_header_font = wx.Font(12, wx.DECORATIVE, wx.ITALIC, wx.NORMAL)
+   #      method_header = wx.StaticText(self, 1, "Methods")
+   #      method_header.SetFont(header_font)
+   #      vsizer_info.Add(method_header, 0, wx.EXPAND | wx.ALL, info_padding)
+   #
+   #      methods_info = [["Neighbour Quality:",
+   #                       """   Search for maps that has similar neighbour quality for all planet types.
+   #  Quality is based on planet type and range to the neighbour.
+   # (it looks for minimum variance of quality between the planet types)"""],
+   #                      ["Distribution:", "   Search for maps with even spatial distribution of planet types."],
+   #                      ["Big clusters:", "   Search for maps with large average cluster sizes"]]
+   #
+   #      for method, description in methods_info:
+   #          small_header = wx.StaticText(self, 1, method)
+   #          small_header.SetFont(small_header_font)
+   #          vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+   #          info_text = wx.StaticText(self, 1, description)
+   #          vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+   #
+   #      settings_header = wx.StaticText(self, 1, "Settings")
+   #      settings_header.SetFont(header_font)
+   #      vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
+   #
+   #      settings_info = [["Number of maps to evaluate:",
+   #                        ["   How many legal maps to evaluate (Illegal maps are rejected during the search).",
+   #                         "   A legal map follow all the limitations given by",
+   #                         "    - Maximum cluster size allowed",
+   #                         "    - Minimum distance between equal planets (not Gaia or Trans Dimentional)",
+   #                         "    - Maximum number of edge planets allowed for a planet type",
+   #                         """   NOTE: if you have too strong restrictions you might make an infinite loop where
+   #  it is never able to find a legal map. It gives up after 20 000 illegal maps."""]],
+   #                       ["Keep core sectors:",
+   #                        "   Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random"],
+   #                       ["2-player: Disable sector 6b in centre", "   Since there are few planets in this sector"],
+   #                       ["2- and 3-player sectors:",
+   #                        """   Select sector count and types used in 2p or 3p"""]]
+   #
+   #      for i, (header, description) in enumerate(settings_info):
+   #          small_header = wx.StaticText(self, 1, header)
+   #          small_header.SetFont(small_header_font)
+   #          vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+   #
+   #          if i == 0:
+   #              for text in description:
+   #                  info_text = wx.StaticText(self, 1, text)
+   #                  vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+   #          else:
+   #              info_text = wx.StaticText(self, 1, description)
+   #              vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+   #
+   #      hsizer_setup.Add(vsizer_info, 1, wx.EXPAND, 10)
 
         vsizer.Add(hsizer_setup, 1, wx.EXPAND)
         self.SetSizer(vsizer)
         self.Centre()
         self.Show()
+
+    def onMouseOver_method(self, event):
+        string = """"Neighbour Quality:
+Search for maps that has similar neighbour quality for all planet types.
+Quality is based on planet type and range to the neighbour.
+(it looks for minimum variance of quality between the planet types)
+
+Distribution:
+Search for maps with even spatial distribution of planet types.
+
+Big clusters:
+Search for maps with large average cluster sizes"""
+        event.GetEventObject().SetToolTip(string)
+
+
+    def onMouseOver_name(self, event):
+        string = """Image saved in "images" in program folder"""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_num_maps(self, event):
+        string = """How many legal maps to evaluate
+(Illegal maps are rejected during the search).
+A legal map follow all the limitations given by
+    - Maximum cluster size allowed
+    - Minimum distance between equal planets 
+      (not Gaia or Trans Dimentional)
+    - Maximum number of edge planets allowed for a planet type
+NOTE: if you have too strong restrictions you might make an infinite loop where it is never able to find a legal map. 
+It gives up after 20 000 illegal maps."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_clusters(self, event):
+        string = """How many planets can be in one cluster 
+(directly in contact with each other)"""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_min_distance(self, event):
+        string = """How close each planet of one color can be to another one of the same color."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_max_edge(self, event):
+        string = """How many edge planets each color can have."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_core_sectors(self, event):
+        string = """Sectors 1, 2, 3 and 4 kept in the centre, only the remaining sectors are random."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_disable_6(self, event):
+        string = """Since there are few planets in this sector."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_sectors(self, event):
+        string = """How many of sectors to use, and which ones."""
+        event.GetEventObject().SetToolTip(string)
 
     def read_settings(self):
         self.num_players = int(self.num_players_options[self.num_player_box.GetSelection()])
@@ -2006,11 +2114,17 @@ class RandomSetup(wx.Frame):
 
 class AdvancedSettings(wx.Frame):
     def __init__(self, parent, params):
-        super(AdvancedSettings, self).__init__(parent, title="Advanced Settings", size=(1000, 970))
+        super(AdvancedSettings, self).__init__(parent, title="Advanced Settings", size=(800, 970))
         self.parent = parent
-        ico = wx.Icon('images/tech_icon.ico', wx.BITMAP_TYPE_ICO)
+        ico = wx.Icon('images/gear_icon.ico', wx.BITMAP_TYPE_ICO)
         self.SetIcon(ico)
         self.SetBackgroundColour("#FFFFFF")
+
+        path = information_blue_path
+        img_info = wx.Image(path, wx.BITMAP_TYPE_ANY)
+        W = img_info.GetWidth()
+        H = img_info.GetHeight()
+        img_info = img_info.Scale(int(W * 0.15), int(H * 0.15))
 
         self.default_font = wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.NORMAL)
         header_font = wx.Font(12, wx.DECORATIVE, wx.NORMAL, wx.BOLD)
@@ -2041,6 +2155,10 @@ class AdvancedSettings(wx.Frame):
             if value == self.radius:
                 btn.SetValue(True)
 
+        img_info_radius = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_radius.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_radius)
+        hsizer.Add(img_info_radius, 0, wx.BOTTOM)
+
         vsizer_settings.Add(hsizer, 0, wx.EXPAND | wx.ALL, 10)
 
         happy_header = wx.StaticText(self, 1, "Neighbour Quality Settings")
@@ -2051,23 +2169,31 @@ class AdvancedSettings(wx.Frame):
 neighbour quality of each planet type. The goal is that each 
 planet type has a similar quality of its neighbours"""
         text = wx.StaticText(self, 0, txt)
-        vsizer_settings.Add(text, 0, wx.EXPAND | wx.ALL, 10)
+
+        hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        hsizer.Add(text, 1, wx.EXPAND | wx.ALL, 0)
+
+        img_info_neighbor = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+        img_info_neighbor.Bind(wx.EVT_ENTER_WINDOW, self.onMouseOver_neighbor)
+        hsizer.Add(img_info_neighbor, 0, wx.BOTTOM)
+
+        vsizer_settings.Add(hsizer, 0, wx.EXPAND | wx.ALL, 10)
 
         vsizer_sliders = wx.BoxSizer(wx.VERTICAL)
         slider_padding = 0
-        sliders = [["Terraform step 0 (Home):", 0, 100, self.terra_param[0]],
-                   ["Terraform step 1:", 0, 100, self.terra_param[1]],
-                   ["Terraform step 2:", 0, 100, self.terra_param[2]],
-                   ["Terraform step 3:", 0, 100, self.terra_param[3]],
-                   ["Gaia planet:", 0, 100, self.gaia_param],
-                   ["Trans-Dim planet:", 0, 100, self.trans_param],
-                   ["Neighbor range 1:", 0, 100, self.range_factor[1]],
-                   ["Neighbor range 2:", 0, 100, self.range_factor[2]],
-                   ["Neighbor range 3:", 0, 100, self.range_factor[3]]]
+        sliders = [["Terraform step 0 (Home):", 0, 100, self.terra_param[0], "onMouseOver_terraform_0"],
+                   ["Terraform step 1:", 0, 100, self.terra_param[1],"onMouseOver_terraform_1"],
+                   ["Terraform step 2:", 0, 100, self.terra_param[2], "onMouseOver_terraform_2"],
+                   ["Terraform step 3:", 0, 100, self.terra_param[3], "onMouseOver_terraform_3"],
+                   ["Gaia planet:", 0, 100, self.gaia_param, "onMouseOver_gaia"],
+                   ["Trans-Dim planet:", 0, 100, self.trans_param, "onMouseOver_transdim"],
+                   ["Neighbor range 1:", 0, 100, self.range_factor[1], "onMouseOver_range_1"],
+                   ["Neighbor range 2:", 0, 100, self.range_factor[2], "onMouseOver_range_2"],
+                   ["Neighbor range 3:", 0, 100, self.range_factor[3], "onMouseOver_range_3"]]
 
         self.happy_sliders = []
 
-        for txt, min, max, default in sliders:
+        for txt, min, max, default, mouse_funk in sliders:
             hsizer = wx.BoxSizer(wx.HORIZONTAL)
 
             text = wx.StaticText(self, 0, txt)
@@ -2076,6 +2202,11 @@ planet type has a similar quality of its neighbours"""
             self.happy_sliders.append(slider)
             hsizer.Add(text, 1, wx.EXPAND | wx.ALL)
             hsizer.Add(slider, 1, wx.EXPAND | wx.ALL)
+
+            img_info_bm = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+            img_info_bm.Bind(wx.EVT_ENTER_WINDOW, getattr(self, mouse_funk))
+            hsizer.Add(img_info_bm, 0, wx.BOTTOM)
+
             vsizer_sliders.Add(hsizer, 0, wx.EXPAND | wx.ALL, slider_padding)
 
         vsizer_settings.Add(vsizer_sliders, 0, wx.EXPAND | wx.ALL, 10)
@@ -2090,13 +2221,13 @@ based on planet density, planet type or both."""
         vsizer_settings.Add(text, 0, wx.EXPAND | wx.ALL, 10)
 
         vsizer_sliders = wx.BoxSizer(wx.VERTICAL)
-        sliders = [["Distribution Type Weight:", 0, 100, self.distribution_param],
-                   ["Planet Density Dropoff Scale:", 0, 100, self.density_param],
-                   ["Type Ratio Dropoff Scale:", 0, 100, self.ratio_param]]
+        sliders = [["Distribution Type Weight:", 0, 100, self.distribution_param, "onMouseOver_distribution"],
+                   ["Planet Density Dropoff Scale:", 0, 100, self.density_param, "onMouseOver_density"],
+                   ["Type Ratio Dropoff Scale:", 0, 100, self.ratio_param, "onMouseOver_type"]]
 
         self.density_sliders = []
 
-        for txt, min, max, default in sliders:
+        for txt, min, max, default, mouse_funk in sliders:
             hsizer = wx.BoxSizer(wx.HORIZONTAL)
 
             text = wx.StaticText(self, 0, txt)
@@ -2105,6 +2236,11 @@ based on planet density, planet type or both."""
             self.density_sliders.append(slider)
             hsizer.Add(text, 1, wx.EXPAND | wx.ALL)
             hsizer.Add(slider, 1, wx.EXPAND | wx.ALL)
+
+            img_info_bm = wx.StaticBitmap(self, wx.ID_ANY, wx.Bitmap(img_info))
+            img_info_bm.Bind(wx.EVT_ENTER_WINDOW, getattr(self, mouse_funk))
+            hsizer.Add(img_info_bm, 0, wx.BOTTOM)
+
             vsizer_sliders.Add(hsizer, 0, wx.EXPAND | wx.ALL, slider_padding)
 
         vsizer_settings.Add(vsizer_sliders, 0, wx.EXPAND | wx.ALL, 10)
@@ -2123,69 +2259,129 @@ based on planet density, planet type or both."""
         vsizer_settings.Add(btn_apply, 0, wx.EXPAND | wx.ALL, 10)
         vsizer_settings.Add(hsizer, 0, wx.EXPAND | wx.ALL, 10)
 
-        # Information text
-        info_padding = 5
-
-        settings_header = wx.StaticText(self, 1, "General settings")
-        settings_header.SetFont(header_font)
-        vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
-
-        info = [["Relevant neighbor radius:", "   Used in the two first methods to define area of influence"]]
-
-        for method, description in info:
-            small_header = wx.StaticText(self, 1, method)
-            small_header.SetFont(small_header_font)
-            vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
-            info_text = wx.StaticText(self, 1, description)
-            vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
-
-        settings_header = wx.StaticText(self, 1, "Neighbour Quality Settings")
-        settings_header.SetFont(header_font)
-        vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
-
-        info = [["Terraform:",
-                 """   The quality of a neighbour based on how much it costs to terraform"""],
-                ["Gaia:",
-                 """   The quality of a Gaia planet"""],
-                ["Trans-Dim:",
-                 """   The quality of a Trans-Dim planet"""],
-                ["Range Factor:",
-                 """   How the range to a neighbour effects the quality. 
-   Quality value for each neighbour is multiplied by the range factor 
-   for the given distance"""]]
-
-        for method, description in info:
-            small_header = wx.StaticText(self, 1, method)
-            small_header.SetFont(small_header_font)
-            vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
-            info_text = wx.StaticText(self, 1, description)
-            vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
-
-        settings_header = wx.StaticText(self, 1, "Distribution Settings")
-        settings_header.SetFont(header_font)
-        vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
-
-        info = [["Distribution Type:",
-                 """    - 100 will optimize for planet density
-    - 0 will optimize for planet types.
-    - A value in between will optimize for a mix"""],
-                ["Planet Density and Type Ratio Dropoff Scale (0-100):",
-                 """   How bad it is to differ from optimal value. A lower number gives 
-   a smaller punishement for having a value outside the optimal."""]]
-
-        for method, description in info:
-            small_header = wx.StaticText(self, 1, method)
-            small_header.SetFont(small_header_font)
-            vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
-            info_text = wx.StaticText(self, 1, description)
-            vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+   #      # Information text
+   #      info_padding = 5
+   #
+   #      settings_header = wx.StaticText(self, 1, "General settings")
+   #      settings_header.SetFont(header_font)
+   #      vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
+   #
+   #      info = [["Relevant neighbor radius:", "   Used in the two first methods to define area of influence"]]
+   #
+   #      for method, description in info:
+   #          small_header = wx.StaticText(self, 1, method)
+   #          small_header.SetFont(small_header_font)
+   #          vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+   #          info_text = wx.StaticText(self, 1, description)
+   #          vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+   #
+   #      settings_header = wx.StaticText(self, 1, "Neighbour Quality Settings")
+   #      settings_header.SetFont(header_font)
+   #      vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
+   #
+   #      info = [["Terraform:",
+   #               """   The quality of a neighbour based on how much it costs to terraform"""],
+   #              ["Gaia:",
+   #               """   The quality of a Gaia planet"""],
+   #              ["Trans-Dim:",
+   #               """   The quality of a Trans-Dim planet"""],
+   #              ["Range Factor:",
+   #               """   How the range to a neighbour effects the quality.
+   # Quality value for each neighbour is multiplied by the range factor
+   # for the given distance"""]]
+   #
+   #      for method, description in info:
+   #          small_header = wx.StaticText(self, 1, method)
+   #          small_header.SetFont(small_header_font)
+   #          vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+   #          info_text = wx.StaticText(self, 1, description)
+   #          vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
+   #
+   #      settings_header = wx.StaticText(self, 1, "Distribution Settings")
+   #      settings_header.SetFont(header_font)
+   #      vsizer_info.Add(settings_header, 0, wx.EXPAND | wx.ALL, info_padding)
+   #
+   #      info = [["Distribution Type:",
+   #               """    - 100 will optimize for planet density
+   #  - 0 will optimize for planet types.
+   #  - A value in between will optimize for a mix"""],
+   #              ["Planet Density and Type Ratio Dropoff Scale (0-100):",
+   #               """   How bad it is to differ from optimal value. A lower number gives
+   # a smaller punishement for having a value outside the optimal."""]]
+   #
+   #      for method, description in info:
+   #          small_header = wx.StaticText(self, 1, method)
+   #          small_header.SetFont(small_header_font)
+   #          vsizer_info.Add(small_header, 0, wx.EXPAND | wx.ALL, info_padding)
+   #          info_text = wx.StaticText(self, 1, description)
+   #          vsizer_info.Add(info_text, 0, wx.EXPAND | wx.ALL, info_padding)
 
         hsizer_overall.Add(vsizer_settings, 1, wx.EXPAND, 40)
-        hsizer_overall.Add(vsizer_info, 1, wx.EXPAND, 20)
+        # hsizer_overall.Add(vsizer_info, 1, wx.EXPAND, 20)
         self.SetSizer(hsizer_overall)
 
         self.Centre()
         self.Show()
+
+    def onMouseOver_radius(self, event):
+        string = """Used in the two first methods to define area of influence"""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_neighbor(self, event):
+        string = """Appreciation value for each neighbour is multiplied by the range appreciation for the given distance"""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_terraform_0(self, event):
+        string = """The appreciation of a home planet nearby."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_terraform_1(self, event):
+        string = """The appreciation of a planet a terraforming step 1 away nearby."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_terraform_2(self, event):
+        string = """The appreciation of a planet a terraforming step 2 away nearby."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_terraform_3(self, event):
+        string = """The appreciation of a planet a terraforming step 3 away nearby."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_gaia(self, event):
+        string = """The appreciation of a Gaia planet nearby."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_transdim(self, event):
+        string = """The appreciation of a Trans-Dim planet nearby."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_range_1(self, event):
+        string = """The appreciation of a planet a distance 1 away"""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_range_2(self, event):
+        string = """The appreciation of a planet a distance 2 away"""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_range_3(self, event):
+        string = """The appreciation of a planet a distance 3 away"""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_distribution(self, event):
+        string = """- 100 will optimize for planet density
+    - 0 will optimize for planet types.
+    - A value in between will optimize for a mix"""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_density(self, event):
+        string = """How bad it is to differ from optimal value. A lower number gives 
+   a smaller punishement for having a value outside the optimal."""
+        event.GetEventObject().SetToolTip(string)
+
+    def onMouseOver_type(self, event):
+        string = """How bad it is to differ from optimal value. A lower number gives 
+   a smaller punishement for having a value outside the optimal."""
+        event.GetEventObject().SetToolTip(string)
 
     def on_apply(self, event=None):
         radius_param = 0
